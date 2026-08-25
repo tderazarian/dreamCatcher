@@ -482,12 +482,14 @@ function applyRemote(p){
   if(!Array.isArray(S.reves))S.reves=[];
   if(!Array.isArray(S.customPersonnes))S.customPersonnes=[];
   if(!Array.isArray(S.customLieux))S.customLieux=[];
+  S.customPersonnes=S.customPersonnes.map(capitalizeFirst);
+  S.customLieux=S.customLieux.map(capitalizeFirst);
   S.reves.forEach(function(r){
     if(!Array.isArray(r.tags))r.tags=[];
     r.tags=r.tags.map(function(t){
-      if(typeof t==='string')return {value:t,type:'autre'};
-      if(t.type==='prenom')return {value:t.value,type:'personne'};
-      return t;
+      if(typeof t==='string')return {value:capitalizeFirst(t),type:'autre'};
+      if(t.type==='prenom')return {value:capitalizeFirst(t.value),type:'personne'};
+      return {value:capitalizeFirst(t.value),type:t.type};
     });
     if(!Array.isArray(r.emotions))r.emotions=[];
     if(typeof r.lucide!=='boolean')r.lucide=false;
@@ -674,7 +676,12 @@ window.removeLearned=function(type,i){
   var list=type==='personne'?S.customPersonnes:S.customLieux;
   if(list){list.splice(i,1);sched();renderLearnedLists();}
 };
+function capitalizeFirst(s){
+  if(!s)return s;
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
 function addEditingTag(value,type){
+  value=capitalizeFirst(value.trim());
   var exists=editingTags.some(function(t){return t.value.toLowerCase()===value.toLowerCase();});
   if(!exists){
     editingTags.push({value:value,type:type});
@@ -769,9 +776,19 @@ function populateTagFilter(){
    ['fltTagAutre','autre','&#127991; Tous les autres tags']].forEach(function(cfg){
     var sel=ge(cfg[0]);
     var cur=sel.value;
-    var tags=allTagsByType(cfg[1]);
-    sel.innerHTML='<option value="">'+cfg[2]+'</option>'+tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
-    sel.value=tags.indexOf(cur)!==-1?cur:'';
+    var top=tagFrequencyByType(cfg[1]).slice(0,5);
+    var all=allTagsByType(cfg[1]);
+    var html='<option value="">'+cfg[2]+'</option>';
+    if(top.length){
+      html+='<option disabled>── Les plus utilisés ──</option>';
+      html+=top.map(function(t){return '<option value="'+esc(t.word)+'">'+esc(t.word)+'</option>';}).join('');
+    }
+    if(all.length){
+      html+='<option disabled>──────────</option>';
+      html+=all.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
+    }
+    sel.innerHTML=html;
+    sel.value=all.indexOf(cur)!==-1?cur:'';
   });
 }
 var fltEmotions=[];
