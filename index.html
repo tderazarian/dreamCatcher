@@ -480,22 +480,38 @@ function loadGist(){
   })
   .catch(function(e){setSS('derr',e.message||'Erreur');console.error('loadGist',e);});
 }
+var DIRTY_KEY='dc_dirty';
+function markDirty(){try{localStorage.setItem(DIRTY_KEY,'1');}catch(e){}}
+function clearDirty(){try{localStorage.removeItem(DIRTY_KEY);}catch(e){}}
+function isDirty(){try{return localStorage.getItem(DIRTY_KEY)==='1';}catch(e){return false;}}
 function saveGist(){
   setSS('dsync','Sauvegarde…');
   var body={files:{}};body.files[GIST_FILE]={content:JSON.stringify(S,null,2)};
   fetch('https://api.github.com/gists/'+cfg.gistId,{method:'PATCH',headers:{'Authorization':'token '+cfg.token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},body:JSON.stringify(body)})
   .then(function(r){
-    if(r.ok){setSS('dok','Sauvegardé ✓');}
+    if(r.ok){setSS('dok','Sauvegardé ✓');clearDirty();}
     else{r.json().then(function(e){setSS('derr','Erreur '+r.status+': '+(e.message||'?'));}).catch(function(){setSS('derr','Erreur '+r.status);});}
   })
   .catch(function(e){setSS('derr','Erreur réseau');console.error('saveGist',e);});
 }
 function sched(){
   cacheLocal();
+  markDirty();
   if(saveTimer)clearTimeout(saveTimer);
   setSS('dwarn','Modification…');
   saveTimer=setTimeout(saveGist,1500);
 }
+function flushPendingSave(){
+  if(saveTimer){
+    clearTimeout(saveTimer);
+    saveTimer=null;
+    saveGist();
+  }
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)flushPendingSave();
+});
+window.addEventListener('pagehide',flushPendingSave);
 window.manualSync=function(){
   ge('mainApp').style.display='none';
   ge('setupScreen').style.display='block';
@@ -777,9 +793,11 @@ window.renderJournal=function(){
 /* ---------- SUGGESTIONS DE TAGS (prénoms / lieux) ---------- */
 /* Liste locale de prénoms français courants (détection heuristique, non exhaustive) */
 var FIRST_NAMES=['Léa','Emma','Chloé','Manon','Camille','Sarah','Julie','Marie','Sophie','Laura','Claire','Anne','Céline','Nathalie','Isabelle','Sylvie','Nicole','Catherine','Valérie','Christine','Aurélie','Charlotte','Julia','Lucie','Pauline','Elise','Élise','Élodie','Amandine','Justine','Margaux','Océane','Inès','Léonie','Alice','Juliette','Louise','Jeanne','Rose','Adèle','Agathe','Amélie','Caroline','Corinne','Dominique','Émilie','Estelle','Fabienne','Florence','Françoise','Ghislaine','Hélène','Jacqueline','Josiane','Laetitia','Laure','Léna','Lisa','Madeleine','Marguerite','Martine','Mathilde','Maud','Mélanie','Michèle','Mireille','Monique','Nadège','Nadine','Odile','Patricia','Renée','Sandra','Sandrine','Solange','Suzanne','Véronique','Virginie','Yvette','Yvonne',
-'Lucas','Hugo','Léo','Louis','Gabriel','Jules','Arthur','Nathan','Thomas','Antoine','Maxime','Alexandre','Nicolas','Julien','Romain','Baptiste','Mathieu','Kevin','Guillaume','David','Vincent','Pierre','Paul','Simon','Adrien','Damien','Cyril','Fabien','Sébastien','Olivier','Laurent','Xavier','Benjamin','Clément','Quentin','Victor','Raphaël','Noah','Timothé','Théo','Mathis','Enzo','Ethan','Nolan','Tom','Yanis','Rayan','Sacha','Eliott','Axel','Bastien','Florian','Jérôme','Frédéric','Christophe','Philippe','Michel','Jacques','Bernard','Daniel','Alain','Patrick','Gérard','Marc','Éric','Franck','Stéphane','Emmanuel','François','Denis','Henri','Marcel','Roger','André','Claude','Yves','Bruno','Didier','Pascal','Gilles','Jean'];
+'Zoé','Zoe','Ambre','Anaïs','Anais','Apolline','Aurore','Blandine','Capucine','Cécile','Clara','Clémence','Coralie','Diane','Elsa','Emmanuelle','Eva','Ève','Eve','Gabrielle','Gaëlle','Gaelle','Ines','Iris','Jade','Jasmine','Joëlle','Joelle','Judith','Karine','Kelly','Laura','Léane','Leane','Lilou','Lola','Lorena','Lou','Maëlle','Maelle','Maëva','Maeva','Magali','Maria','Marina','Marion','Maëlys','Maelys','Mélissa','Melissa','Morgane','Nadia','Nawel','Nawal','Nina','Noémie','Noemie','Olivia','Oriane','Perrine','Priscilla','Rachel','Romane','Roxane','Salomé','Salome','Séverine','Severine','Tiphaine','Yasmine','Yasmina','Zoélie',
+'Lucas','Hugo','Léo','Louis','Gabriel','Jules','Arthur','Nathan','Thomas','Antoine','Maxime','Alexandre','Nicolas','Julien','Romain','Baptiste','Mathieu','Kevin','Guillaume','David','Vincent','Pierre','Paul','Simon','Adrien','Damien','Cyril','Fabien','Sébastien','Olivier','Laurent','Xavier','Benjamin','Clément','Quentin','Victor','Raphaël','Noah','Timothé','Théo','Mathis','Enzo','Ethan','Nolan','Tom','Yanis','Rayan','Sacha','Eliott','Axel','Bastien','Florian','Jérôme','Frédéric','Christophe','Philippe','Michel','Jacques','Bernard','Daniel','Alain','Patrick','Gérard','Marc','Éric','Franck','Stéphane','Emmanuel','François','Denis','Henri','Marcel','Roger','André','Claude','Yves','Bruno','Didier','Pascal','Gilles','Jean',
+'Gaëtan','Gaetan','Erwan','Yann','Yannick','Kylian','Aaron','Liam','Kenzo','Malo','Mathéo','Matheo','Milo','Ilan','Elio','Léon','Leon','Marius','Gabin','Ismaël','Ismael','Karim','Sami','Samy','Nassim','Rachid','Ahmed','Mehdi','Yassine','Anthony','Cédric','Cedric','Fabrice','Ludovic','Mickaël','Mickael','Steven','Sylvain','Thierry','Wilfried','Régis','Regis','Grégory','Gregory','Jonathan','Jérémy','Jeremy','Loïc','Loic','Morgan','Rémi','Remi','Valentin','Yohann','Anouar','Brahim','Malik','Idris','Bilal','Alexis','Corentin','Erwann','Gwendal','Ronan','Tanguy','Yves-Marie'];
 /* Surnoms / diminutifs français courants */
-var NICKNAMES=['Alex','Seb','Manu','Nico','Vince','Max','Sam','Flo','Steph','Cathy','Béa','Bea','Mimi','Loulou','Bibi','Pat','Fred','Greg','Chris','Nanou','Riri','Fifi','Titi','Zaza','Caro','Delph','Val','Gaby','Will','Dédé','Mumu','Coco','Milou','Nini','Momo','Lulu','Toto','Jules','Manue','Marie-Ange','Jo','Mano'];
+var NICKNAMES=['Alex','Seb','Stef','Steff','Manu','Nico','Vince','Max','Sam','Flo','Steph','Cathy','Béa','Bea','Mimi','Loulou','Bibi','Pat','Fred','Greg','Chris','Nanou','Riri','Fifi','Titi','Zaza','Caro','Delph','Val','Gaby','Will','Dédé','Mumu','Coco','Milou','Nini','Momo','Lulu','Toto','Jules','Manue','Marie-Ange','Jo','Mano','Math','Vivi','Juju','Lolo','Cricri','Nana','Bébel'];
 
 /* Liens familiaux et relationnels (mot simple, tokenisable) */
 var FAMILY_WORDS=['Papa','Maman','Père','Mère','Frère','Sœur','Soeur','Mamie','Papi','Papy','Tonton','Tata','Oncle','Tante','Cousin','Cousine','Fils','Fille','Mari','Femme','Époux','Épouse','Copain','Copine','Voisin','Voisine','Ami','Amie','Parrain','Marraine','Filleul','Filleule'];
@@ -985,7 +1003,13 @@ window.exportJSON=function(){
     ge('mainApp').style.display='block';
     var cur=(function(){try{return localStorage.getItem('dc_last_page')||'journal';}catch(e){return 'journal';}})();
     showPage(cur);
-    loadGist();
+    if(isDirty()){
+      /* Des changements de la session précédente n'ont pas fini d'être synchronisés :
+         on les pousse d'abord pour ne pas les écraser avec une version distante périmée. */
+      saveGist();
+    }else{
+      loadGist();
+    }
   }else{
     ge('setupToken').value='';
     ge('setupGist').value='';
