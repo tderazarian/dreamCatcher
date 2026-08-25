@@ -257,7 +257,9 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       </div>
       <div class="filter-row">
         <input type="text" id="fltSearch" placeholder="Rechercher un mot, un titre…" oninput="renderJournal()">
-        <select id="fltTag" onchange="renderJournal()"><option value="">Tous les tags</option></select>
+        <select id="fltTagPersonne" onchange="renderJournal()"><option value="">&#128100; Toutes les personnes</option></select>
+        <select id="fltTagLieu" onchange="renderJournal()"><option value="">&#128205; Tous les lieux</option></select>
+        <select id="fltTagAutre" onchange="renderJournal()"><option value="">&#127991; Tous les autres tags</option></select>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
           <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
@@ -756,24 +758,21 @@ document.addEventListener('keydown',function(e){
 });
 
 /* ---------- JOURNAL ---------- */
-function allTags(){
+function allTagsByType(type){
   var s={};
-  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){s[t.value]=(s[t.value]||0)+1;});});
-  return Object.keys(s).sort(function(a,b){return s[b]-s[a];});
-}
-function tagIconFor(value){
-  var found=null;
-  S.reves.some(function(r){
-    return (r.tags||[]).some(function(t){if(t.value===value){found=t.type;return true;}return false;});
-  });
-  return found==='personne'?'\uD83D\uDC64 ':found==='lieu'?'\uD83D\uDCCD ':'';
+  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)s[t.value]=true;});});
+  return Object.keys(s).sort(function(a,b){return a.localeCompare(b,'fr');});
 }
 function populateTagFilter(){
-  var sel=ge('fltTag');
-  var cur=sel.value;
-  var tags=allTags();
-  sel.innerHTML='<option value="">Tous les tags</option>'+tags.map(function(t){return '<option value="'+esc(t)+'">'+tagIconFor(t)+esc(t)+'</option>';}).join('');
-  sel.value=tags.indexOf(cur)!==-1?cur:'';
+  [['fltTagPersonne','personne','&#128100; Toutes les personnes'],
+   ['fltTagLieu','lieu','&#128205; Tous les lieux'],
+   ['fltTagAutre','autre','&#127991; Tous les autres tags']].forEach(function(cfg){
+    var sel=ge(cfg[0]);
+    var cur=sel.value;
+    var tags=allTagsByType(cfg[1]);
+    sel.innerHTML='<option value="">'+cfg[2]+'</option>'+tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
+    sel.value=tags.indexOf(cur)!==-1?cur:'';
+  });
 }
 var fltEmotions=[];
 window.toggleFilterEmotion=function(key){
@@ -791,12 +790,16 @@ window.renderJournal=function(){
   renderFltEmotionsRow();
   populateTagFilter();
   var q=(ge('fltSearch').value||'').toLowerCase().trim();
-  var tag=ge('fltTag').value;
+  var tagPersonne=ge('fltTagPersonne').value;
+  var tagLieu=ge('fltTagLieu').value;
+  var tagAutre=ge('fltTagAutre').value;
   var lucOnly=ge('fltLucide').value==='1';
   var list=S.reves.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0);});
   list=list.filter(function(r){
     if(q&&!((r.titre||'').toLowerCase().indexOf(q)!==-1||(r.texte||'').toLowerCase().indexOf(q)!==-1))return false;
-    if(tag&&!(r.tags||[]).some(function(t){return t.value===tag;}))return false;
+    if(tagPersonne&&!(r.tags||[]).some(function(t){return t.type==='personne'&&t.value===tagPersonne;}))return false;
+    if(tagLieu&&!(r.tags||[]).some(function(t){return t.type==='lieu'&&t.value===tagLieu;}))return false;
+    if(tagAutre&&!(r.tags||[]).some(function(t){return t.type==='autre'&&t.value===tagAutre;}))return false;
     if(fltEmotions.length&&!(r.emotions||[]).some(function(k){return fltEmotions.indexOf(k)!==-1;}))return false;
     if(lucOnly&&!r.lucide)return false;
     return true;
