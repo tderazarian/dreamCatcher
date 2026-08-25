@@ -102,6 +102,14 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .dc-emo-pill{font-size:18px;line-height:1}
 /* STACKED CHART LEGEND */
 .legend-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.fl-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.fl-row .fl{margin-bottom:0}
+.info-btn{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--bds);background:var(--bp);color:var(--ts);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.info-btn:hover{background:var(--bt)}
+.emotion-info-item{margin-bottom:16px}
+.emotion-info-item:last-child{margin-bottom:0}
+.emotion-info-title{font-weight:600;font-size:14px;color:var(--tp);display:flex;align-items:center;gap:8px}
+.emotion-info-desc{font-size:13px;color:var(--ts);margin-top:4px;line-height:1.5}
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ts)}
 .legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 .stack-row{margin-bottom:10px}
@@ -250,7 +258,10 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       <div class="filter-row">
         <input type="text" id="fltSearch" placeholder="Rechercher un mot, un titre…" oninput="renderJournal()">
         <select id="fltTag" onchange="renderJournal()"><option value="">Tous les tags</option></select>
-        <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
+          <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
+        </div>
         <select id="fltLucide" onchange="renderJournal()">
           <option value="">Lucides et non-lucides</option>
           <option value="1">&#10024; Lucides uniquement</option>
@@ -323,7 +334,10 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       <textarea id="reveTexte" placeholder="Raconte ton rêve…"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Émotions ressenties</label>
+      <div class="fl-row">
+        <label class="fl">Émotions ressenties</label>
+        <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
+      </div>
       <div class="emotion-row" id="emotionRow"></div>
     </div>
     <div class="field">
@@ -380,6 +394,17 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
   </div>
 </div>
 
+<!-- MODAL INFO ÉMOTIONS -->
+<div class="ov" id="ovEmotionInfo">
+  <div class="modal" style="max-width:440px">
+    <div class="mh">
+      <div class="mt">Les 5 émotions (Hall &amp; Van de Castle)</div>
+      <button class="bd2" onclick="closeEmotionInfo()" aria-label="Fermer">&#10005;</button>
+    </div>
+    <div id="emotionInfoList"></div>
+  </div>
+</div>
+
 <script>
 (function(){
 var CFG_KEY='dc_cfg';
@@ -394,15 +419,23 @@ var S={}; Object.keys(defState).forEach(function(k){S[k]=JSON.parse(JSON.stringi
 
 /* Référentiel Hall & Van de Castle : 5 catégories d'émotions, multi-sélection par rêve */
 var EMOTIONS=[
-  {key:'apprehension',emoji:'\uD83D\uDE28',label:'Appréhension',colorVar:'--coral'},
-  {key:'colere',emoji:'\uD83D\uDE20',label:'Colère',colorVar:'--pink'},
-  {key:'tristesse',emoji:'\uD83D\uDE22',label:'Tristesse',colorVar:'--sky'},
-  {key:'confusion',emoji:'\uD83D\uDE35\u200D\uD83D\uDCAB',label:'Confusion',colorVar:'--amber'},
-  {key:'bonheur',emoji:'\uD83D\uDE0A',label:'Bonheur',colorVar:'--mint'}
+  {key:'apprehension',emoji:'\uD83D\uDE28',label:'Appréhension',colorVar:'--coral',desc:'Peur, anxiété, sentiment de menace ou d\'insécurité. Ex : être poursuivi, sentir un danger approcher, un examen non préparé.'},
+  {key:'colere',emoji:'\uD83D\uDE20',label:'Colère',colorVar:'--pink',desc:'Irritation, rage, sentiment d\'injustice. Ex : se disputer, être ignoré, être accusé à tort.'},
+  {key:'tristesse',emoji:'\uD83D\uDE22',label:'Tristesse',colorVar:'--sky',desc:'Chagrin, déception, sentiment de perte ou de manque. Ex : revoir un proche disparu, rater un moment important, se sentir exclu.'},
+  {key:'confusion',emoji:'\uD83D\uDE35\u200D\uD83D\uDCAB',label:'Confusion',colorVar:'--amber',desc:'Désorientation, incertitude, logique décousue. Ex : ne pas reconnaître un lieu familier, changer de décor sans transition.'},
+  {key:'bonheur',emoji:'\uD83D\uDE0A',label:'Bonheur',colorVar:'--mint',desc:'Joie, satisfaction, sentiment de plénitude. Ex : voler librement, retrouver un être cher, réussir un exploit.'}
 ];
 function emotionByKey(k){return EMOTIONS.find(function(x){return x.key===k;});}
 function emotionLabel(k){var e=emotionByKey(k);return e?e.label:k;}
 function emotionEmoji(k){var e=emotionByKey(k);return e?e.emoji:'';}
+function emotionTooltip(k){var e=emotionByKey(k);return e?e.label+' — '+e.desc:k;}
+window.openEmotionInfo=function(){
+  ge('emotionInfoList').innerHTML=EMOTIONS.map(function(e){
+    return '<div class="emotion-info-item"><div class="emotion-info-title">'+e.emoji+' '+esc(e.label)+'</div><div class="emotion-info-desc">'+esc(e.desc)+'</div></div>';
+  }).join('');
+  ge('ovEmotionInfo').classList.add('open');
+};
+window.closeEmotionInfo=function(){ge('ovEmotionInfo').classList.remove('open');};
 
 /* ---------- PAGES / NAV ---------- */
 window.showPage=function(p){
@@ -579,7 +612,7 @@ function emotionOptHtml(e,selected,filterVariant){
   var cls=(filterVariant?'emotion-chip-filter':'emotion-opt')+(selected?' sel':'');
   var style='--em-color:var('+e.colorVar+'-d,var('+e.colorVar+'));--em-bg:var('+e.colorVar+');--em-ring:var('+e.colorVar+')';
   var onclick=filterVariant?'toggleFilterEmotion(\''+e.key+'\')':'toggleEmotion(\''+e.key+'\')';
-  return '<div class="'+cls+'" style="'+style+'" onclick="'+onclick+'"><span class="em-ico">'+e.emoji+'</span>'+esc(e.label)+'</div>';
+  return '<div class="'+cls+'" style="'+style+'" onclick="'+onclick+'" title="'+esc(e.label+' — '+e.desc)+'"><span class="em-ico">'+e.emoji+'</span>'+esc(e.label)+'</div>';
 }
 function renderEmotionRow(){
   ge('emotionRow').innerHTML=EMOTIONS.map(function(e){
@@ -778,7 +811,7 @@ window.renderJournal=function(){
       var cls='tag-pill'+(t.type==='personne'?' tp-personne':t.type==='lieu'?' tp-lieu':'');
       return '<span class="'+cls+'">'+esc(t.value)+'</span>';
     }).join('');
-    var emoHtml=(r.emotions||[]).map(function(k){return '<span class="dc-emo-pill" title="'+esc(emotionLabel(k))+'">'+emotionEmoji(k)+'</span>';}).join('');
+    var emoHtml=(r.emotions||[]).map(function(k){return '<span class="dc-emo-pill" title="'+esc(emotionTooltip(k))+'">'+emotionEmoji(k)+'</span>';}).join('');
     return '<div class="dream-card" onclick="openReveModal(\''+r.id+'\')">'+
       '<div class="dc-top">'+
         '<div><div class="dc-title">'+esc(r.titre)+'</div><div class="dc-date">'+fmtDateFR(r.date)+'</div></div>'+
@@ -939,7 +972,7 @@ function barList(items,maxLabel){
 }
 function emotionsLegendHtml(){
   return '<div class="legend-row">'+EMOTIONS.map(function(e){
-    return '<div class="legend-item"><span class="legend-dot" style="background:var('+e.colorVar+')"></span>'+e.emoji+' '+esc(e.label)+'</div>';
+    return '<div class="legend-item" title="'+esc(e.label+' — '+e.desc)+'"><span class="legend-dot" style="background:var('+e.colorVar+')"></span>'+e.emoji+' '+esc(e.label)+'</div>';
   }).join('')+'</div>';
 }
 function stackedEmotionsChart(data){
@@ -970,7 +1003,7 @@ window.renderAnalyse=function(){
     '<div class="metric"><div class="ml">Rêves lucides</div><div class="mv">'+lucidPct+'%</div></div>'+
     '<div class="metric"><div class="ml">Émotion dominante</div><div class="mv">'+domHtml+'</div></div>'+
   '</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">Évolution des émotions</div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
+  html+='<div class="card"><div class="fl-row" style="margin-bottom:10px"><div class="fl" style="margin-bottom:0">Évolution des émotions</div><button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button></div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Répartition des émotions</div>'+distHtml+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+barList(wordFrequency())+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128100; Personnes les plus fréquentes</div>'+barList(tagFrequencyByType('personne'))+'</div>';
