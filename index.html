@@ -128,9 +128,14 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .suggest-chip.sc-lieu{border-color:var(--mint-d);color:var(--mint-d)}
 .suggest-chip .sc-plus{font-weight:700}
 .tag-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;background:var(--bt);color:var(--accent-d);font-weight:600;white-space:nowrap}
+.tag-chip.tp-prenom{background:var(--accent);color:#fff}
+.tag-chip.tp-prenom .rm{color:#fff}
+.tag-chip.tp-lieu{background:var(--mint);color:#0F5C3E}
 .tag-chip .rm{cursor:pointer;opacity:0.6;font-size:13px}
 .tag-chip .rm:hover{opacity:1}
 .tag-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;background:var(--bt);color:var(--accent-d);font-weight:600;white-space:nowrap;margin:2px 3px 2px 0}
+.tag-pill.tp-prenom{background:var(--accent);color:#fff}
+.tag-pill.tp-lieu{background:var(--mint);color:#0F5C3E}
 .detect-btn-row{margin-top:8px}
 
 /* DREAM CARD LIST */
@@ -312,16 +317,31 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       <div class="emotion-row" id="emotionRow"></div>
     </div>
     <div class="field">
-      <label class="fl">Tags</label>
-      <div class="tag-input-row" id="tagInputRow">
-        <input type="text" id="tagInput" placeholder="Ajouter un tag, Entrée pour valider">
-      </div>
+      <label class="fl">Détection automatique</label>
       <div class="detect-btn-row">
         <button type="button" class="bs2" onclick="runSuggestions()">&#128269; Détecter prénoms &amp; lieux</button>
       </div>
       <div class="suggest-wrap" id="suggestWrap" style="display:none">
         <div class="suggest-label">Suggestions détectées dans le récit</div>
         <div class="suggest-row" id="suggestRow"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label class="fl">&#128100; Prénoms</label>
+      <div class="tag-input-row" id="tagRowPrenom">
+        <input type="text" id="tagInputPrenom" placeholder="Ajouter un prénom, Entrée pour valider">
+      </div>
+    </div>
+    <div class="field">
+      <label class="fl">&#128205; Lieux</label>
+      <div class="tag-input-row" id="tagRowLieu">
+        <input type="text" id="tagInputLieu" placeholder="Ajouter un lieu, Entrée pour valider">
+      </div>
+    </div>
+    <div class="field">
+      <label class="fl">&#127991; Autres tags</label>
+      <div class="tag-input-row" id="tagRowAutre">
+        <input type="text" id="tagInputAutre" placeholder="Ajouter un tag, Entrée pour valider">
       </div>
     </div>
     <div class="field">
@@ -416,6 +436,7 @@ function applyRemote(p){
   if(!Array.isArray(S.reves))S.reves=[];
   S.reves.forEach(function(r){
     if(!Array.isArray(r.tags))r.tags=[];
+    r.tags=r.tags.map(function(t){return typeof t==='string'?{value:t,type:'autre'}:t;});
     if(!Array.isArray(r.emotions))r.emotions=[];
     if(typeof r.lucide!=='boolean')r.lucide=false;
     delete r.humeur;
@@ -538,24 +559,31 @@ window.toggleEmotion=function(key){
   renderEmotionRow();
 };
 
+function tagChipHtml(t,i){
+  var cls='tag-chip'+(t.type==='prenom'?' tp-prenom':t.type==='lieu'?' tp-lieu':'');
+  return '<span class="'+cls+'" data-i="'+i+'">'+esc(t.value)+' <span class="rm" onclick="removeTag('+i+')">&#10005;</span></span>';
+}
 function renderTagChips(){
-  var row=ge('tagInputRow');
-  var input=ge('tagInput');
-  Array.from(row.querySelectorAll('.tag-chip')).forEach(function(c){c.remove();});
-  editingTags.forEach(function(t,i){
-    var chip=document.createElement('span');
-    chip.className='tag-chip';
-    chip.innerHTML=esc(t)+' <span class="rm" onclick="removeTag('+i+')">&#10005;</span>';
-    row.insertBefore(chip,input);
+  ['tagRowPrenom','tagRowLieu','tagRowAutre'].forEach(function(rowId,idx){
+    var type=['prenom','lieu','autre'][idx];
+    var row=ge(rowId);
+    var input=row.querySelector('input');
+    var html=editingTags.map(function(t,i){return t.type===type?tagChipHtml(t,i):'';}).join('');
+    row.innerHTML=html;
+    row.appendChild(input);
   });
 }
 window.removeTag=function(i){editingTags.splice(i,1);renderTagChips();};
-function addTagFromInput(){
-  var input=ge('tagInput');
+function addTagOfType(type,inputId){
+  var input=ge(inputId);
   var v=input.value.trim().replace(/,$/,'');
-  if(v&&editingTags.indexOf(v)===-1){editingTags.push(v);renderTagChips();}
+  if(v){
+    var exists=editingTags.some(function(t){return t.value.toLowerCase()===v.toLowerCase();});
+    if(!exists){editingTags.push({value:v,type:type});renderTagChips();}
+  }
   input.value='';
 }
+window.addTagOfType=addTagOfType;
 window.toggleLucide=function(){
   editingLucide=!editingLucide;
   ge('lucideChk').className='chk'+(editingLucide?' on':'');
@@ -568,7 +596,7 @@ window.openReveModal=function(id){
   ge('reveDate').value=r?r.date:todayISO();
   ge('reveTitre').value=r?r.titre:'';
   ge('reveTexte').value=r?r.texte:'';
-  editingTags=r?r.tags.slice():[];
+  editingTags=r?r.tags.map(function(t){return typeof t==='string'?{value:t,type:'autre'}:t;}):[];
   editingEmotions=r?r.emotions.slice():[];
   editingLucide=r?r.lucide:false;
   renderEmotionRow();renderTagChips();
@@ -579,7 +607,9 @@ window.openReveModal=function(id){
 };
 window.closeReveModal=function(){ge('ovReve').classList.remove('open');};
 window.saveReve=function(){
-  addTagFromInput();
+  addTagOfType('prenom','tagInputPrenom');
+  addTagOfType('lieu','tagInputLieu');
+  addTagOfType('autre','tagInputAutre');
   var id=ge('reveId').value;
   var date=ge('reveDate').value||todayISO();
   var titre=ge('reveTitre').value.trim()||'Sans titre';
@@ -612,24 +642,34 @@ window.confirmDeleteReve=function(){
   renderJournal();
 };
 
-/* Enter key adds tag */
+/* Enter key adds tag (par zone) */
 document.addEventListener('keydown',function(e){
-  if(e.target&&e.target.id==='tagInput'&&(e.key==='Enter'||e.key===',')){
-    e.preventDefault();addTagFromInput();
+  if(!e.target)return;
+  var map={tagInputPrenom:'prenom',tagInputLieu:'lieu',tagInputAutre:'autre'};
+  var type=map[e.target.id];
+  if(type&&(e.key==='Enter'||e.key===',')){
+    e.preventDefault();addTagOfType(type,e.target.id);
   }
 });
 
 /* ---------- JOURNAL ---------- */
 function allTags(){
   var s={};
-  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){s[t]=(s[t]||0)+1;});});
+  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){s[t.value]=(s[t.value]||0)+1;});});
   return Object.keys(s).sort(function(a,b){return s[b]-s[a];});
+}
+function tagIconFor(value){
+  var found=null;
+  S.reves.some(function(r){
+    return (r.tags||[]).some(function(t){if(t.value===value){found=t.type;return true;}return false;});
+  });
+  return found==='prenom'?'\uD83D\uDC64 ':found==='lieu'?'\uD83D\uDCCD ':'';
 }
 function populateTagFilter(){
   var sel=ge('fltTag');
   var cur=sel.value;
   var tags=allTags();
-  sel.innerHTML='<option value="">Tous les tags</option>'+tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
+  sel.innerHTML='<option value="">Tous les tags</option>'+tags.map(function(t){return '<option value="'+esc(t)+'">'+tagIconFor(t)+esc(t)+'</option>';}).join('');
   sel.value=tags.indexOf(cur)!==-1?cur:'';
 }
 var fltEmotions=[];
@@ -653,7 +693,7 @@ window.renderJournal=function(){
   var list=S.reves.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0);});
   list=list.filter(function(r){
     if(q&&!((r.titre||'').toLowerCase().indexOf(q)!==-1||(r.texte||'').toLowerCase().indexOf(q)!==-1))return false;
-    if(tag&&(r.tags||[]).indexOf(tag)===-1)return false;
+    if(tag&&!(r.tags||[]).some(function(t){return t.value===tag;}))return false;
     if(fltEmotions.length&&!(r.emotions||[]).some(function(k){return fltEmotions.indexOf(k)!==-1;}))return false;
     if(lucOnly&&!r.lucide)return false;
     return true;
@@ -664,7 +704,10 @@ window.renderJournal=function(){
     return;
   }
   el.innerHTML=list.map(function(r){
-    var tagsHtml=(r.tags||[]).map(function(t){return '<span class="tag-pill">'+esc(t)+'</span>';}).join('');
+    var tagsHtml=(r.tags||[]).map(function(t){
+      var cls='tag-pill'+(t.type==='prenom'?' tp-prenom':t.type==='lieu'?' tp-lieu':'');
+      return '<span class="'+cls+'">'+esc(t.value)+'</span>';
+    }).join('');
     var emoHtml=(r.emotions||[]).map(function(k){return '<span class="dc-emo-pill" title="'+esc(emotionLabel(k))+'">'+emotionEmoji(k)+'</span>';}).join('');
     return '<div class="dream-card" onclick="openReveModal(\''+r.id+'\')">'+
       '<div class="dc-top">'+
@@ -716,10 +759,10 @@ function detectSuggestions(text){
   return out;
 }
 
-function runSuggestions(){
+window.runSuggestions=function(){
   var text=(ge('reveTitre').value||'')+' '+(ge('reveTexte').value||'');
   var found=detectSuggestions(text);
-  var existing={};editingTags.forEach(function(t){existing[t.toLowerCase()]=true;});
+  var existing={};editingTags.forEach(function(t){existing[t.value.toLowerCase()]=true;});
   var candidates=found.filter(function(f){return !existing[f.value.toLowerCase()];});
   renderSuggestions(candidates);
 }
@@ -737,7 +780,8 @@ function renderSuggestions(candidates){
 window.acceptSuggestion=function(i){
   var c=window._pendingSuggestions&&window._pendingSuggestions[i];
   if(!c)return;
-  if(editingTags.indexOf(c.value)===-1){editingTags.push(c.value);renderTagChips();}
+  var exists=editingTags.some(function(t){return t.value.toLowerCase()===c.value.toLowerCase();});
+  if(!exists){editingTags.push({value:c.value,type:c.type});renderTagChips();}
   runSuggestions();
 };
 
@@ -754,9 +798,9 @@ function wordFrequency(){
   });
   return Object.keys(counts).map(function(w){return {word:w,count:counts[w]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
 }
-function tagFrequency(){
+function tagFrequencyByType(type){
   var counts={};
-  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){counts[t]=(counts[t]||0)+1;});});
+  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)counts[t.value]=(counts[t.value]||0)+1;});});
   return Object.keys(counts).map(function(t){return {word:t,count:counts[t]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
 }
 function emotionFrequency(){
@@ -827,7 +871,9 @@ window.renderAnalyse=function(){
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Évolution des émotions</div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Répartition des émotions</div>'+distHtml+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+barList(wordFrequency())+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">Tags les plus fréquents</div>'+barList(tagFrequency())+'</div>';
+  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128100; Prénoms les plus fréquents</div>'+barList(tagFrequencyByType('prenom'))+'</div>';
+  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128205; Lieux les plus fréquents</div>'+barList(tagFrequencyByType('lieu'))+'</div>';
+  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#127991; Autres tags les plus fréquents</div>'+barList(tagFrequencyByType('autre'))+'</div>';
   ge('analyseContent').innerHTML=html;
 };
 
