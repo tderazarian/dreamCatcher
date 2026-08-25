@@ -170,6 +170,12 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .bar-track{flex:1;height:10px;background:var(--bt);border-radius:5px;overflow:hidden}
 .bar-fill{height:100%;border-radius:5px;background:var(--accent)}
 .bar-count{font-size:12px;color:var(--ts);width:28px;text-align:right;flex-shrink:0}
+.freq-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 2px;font-size:12px;font-weight:600;color:var(--ts);user-select:none;border-top:1px solid var(--bd);margin-top:8px}
+.freq-toggle:hover{color:var(--tp)}
+.freq-chevron{transition:transform 0.2s;font-size:10px;color:var(--ts)}
+.freq-chevron.open{transform:rotate(180deg)}
+.freq-rest{display:none;margin-top:2px}
+.freq-rest.open{display:block}
 
 /* EMPTY */
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--ts);font-size:13px}
@@ -413,6 +419,9 @@ var CFG_KEY='dc_cfg';
 var STATE_CACHE_KEY='dreamcatcher_state';
 var GIST_FILE='dreamcatcher.json';
 var cfg={token:'',gistId:''};
+/* Paramètres de l'application : seuil et taille du "top" des tags (filtres + page Analyse) */
+var TAG_TOP_MIN_OCCURRENCES=2;
+var TAG_TOP_MAX_ITEMS=5;
 var saveTimer=null;
 function ge(id){return document.getElementById(id);}
 
@@ -776,7 +785,7 @@ function populateTagFilter(){
    ['fltTagAutre','autre','&#127991; Tous les autres tags']].forEach(function(cfg){
     var sel=ge(cfg[0]);
     var cur=sel.value;
-    var top=tagFrequencyByType(cfg[1]).slice(0,5);
+    var top=tagFrequencyByType(cfg[1]).filter(function(t){return t.count>=TAG_TOP_MIN_OCCURRENCES;}).slice(0,TAG_TOP_MAX_ITEMS);
     var all=allTagsByType(cfg[1]);
     var html='<option value="">'+cfg[2]+'</option>';
     if(top.length){
@@ -956,7 +965,7 @@ function wordFrequency(){
 function tagFrequencyByType(type){
   var counts={};
   S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)counts[t.value]=(counts[t.value]||0)+1;});});
-  return Object.keys(counts).map(function(t){return {word:t,count:counts[t]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
+  return Object.keys(counts).map(function(t){return {word:t,count:counts[t]};}).sort(function(a,b){return b.count-a.count||a.word.localeCompare(b.word,'fr');});
 }
 function emotionFrequency(){
   var counts={};
@@ -1009,6 +1018,30 @@ function stackedEmotionsChart(data){
   });
   return html;
 }
+function frequencyCardHtml(type,title){
+  var all=tagFrequencyByType(type);
+  var frequent=all.filter(function(t){return t.count>=TAG_TOP_MIN_OCCURRENCES;});
+  var rest=all.filter(function(t){return t.count<TAG_TOP_MIN_OCCURRENCES;});
+  var html='<div class="card"><div class="fl" style="margin-bottom:10px">'+title+'</div>';
+  if(frequent.length===0&&rest.length===0){
+    html+='<div class="empty">Pas encore assez de données.</div>';
+  }else{
+    html+=frequent.length?barList(frequent):'<div class="empty" style="padding:0.5rem 0">Aucun tag utilisé au moins '+TAG_TOP_MIN_OCCURRENCES+' fois pour l\'instant.</div>';
+    if(rest.length){
+      html+='<div class="freq-toggle" onclick="toggleFreqCollapse(\''+type+'\')"><span>Voir '+rest.length+' autre'+(rest.length>1?'s':'')+'</span><span class="freq-chevron" id="freqChevron-'+type+'">&#9660;</span></div>';
+      html+='<div class="freq-rest" id="freqRest-'+type+'">'+barList(rest)+'</div>';
+    }
+  }
+  html+='</div>';
+  return html;
+}
+window.toggleFreqCollapse=function(type){
+  var rest=ge('freqRest-'+type);
+  var chevron=ge('freqChevron-'+type);
+  if(!rest)return;
+  var open=rest.classList.toggle('open');
+  if(chevron)chevron.classList.toggle('open',open);
+};
 window.renderAnalyse=function(){
   var total=S.reves.length;
   var lucidPct=total?Math.round(100*S.reves.filter(function(r){return r.lucide;}).length/total):0;
@@ -1026,9 +1059,9 @@ window.renderAnalyse=function(){
   html+='<div class="card"><div class="fl-row" style="margin-bottom:10px"><div class="fl" style="margin-bottom:0">Évolution des émotions</div><button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button></div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Répartition des émotions</div>'+distHtml+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+barList(wordFrequency())+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128100; Personnes les plus fréquentes</div>'+barList(tagFrequencyByType('personne'))+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128205; Lieux les plus fréquents</div>'+barList(tagFrequencyByType('lieu'))+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#127991; Autres tags les plus fréquents</div>'+barList(tagFrequencyByType('autre'))+'</div>';
+  html+=frequencyCardHtml('personne','&#128100; Personnes les plus fréquentes');
+  html+=frequencyCardHtml('lieu','&#128205; Lieux les plus fréquents');
+  html+=frequencyCardHtml('autre','&#127991; Autres tags les plus fréquents');
   ge('analyseContent').innerHTML=html;
 };
 
