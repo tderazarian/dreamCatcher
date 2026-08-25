@@ -284,6 +284,16 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
         <div class="fl" style="margin-bottom:10px">Données</div>
         <button class="bs2" onclick="exportJSON()">&#11015; Exporter en JSON</button>
       </div>
+      <div class="card">
+        <div class="fl" style="margin-bottom:6px">&#128100; Personnes apprises</div>
+        <div class="fh" style="margin-bottom:10px">Ajoutées automatiquement quand tu déclares un tag "Personne" qui n'était pas déjà reconnu. Elles seront proposées dans les prochains rêves.</div>
+        <div id="learnedPersonnesList"></div>
+      </div>
+      <div class="card">
+        <div class="fl" style="margin-bottom:6px">&#128205; Lieux appris</div>
+        <div class="fh" style="margin-bottom:10px">Ajoutés automatiquement quand tu déclares un tag "Lieu" qui n'était pas déjà reconnu.</div>
+        <div id="learnedLieuxList"></div>
+      </div>
     </div>
 
   </div>
@@ -379,7 +389,7 @@ var cfg={token:'',gistId:''};
 var saveTimer=null;
 function ge(id){return document.getElementById(id);}
 
-var defState={reves:[]};
+var defState={reves:[],customPersonnes:[],customLieux:[]};
 var S={}; Object.keys(defState).forEach(function(k){S[k]=JSON.parse(JSON.stringify(defState[k]));});
 
 /* Référentiel Hall & Van de Castle : 5 catégories d'émotions, multi-sélection par rêve */
@@ -407,6 +417,7 @@ window.showPage=function(p){
   if(p==='config'){
     ge('cfgToken').value=cfg.token||'';
     ge('cfgGist').value=cfg.gistId||'';
+    renderLearnedLists();
   }
 };
 window.toggleBurger=function(){
@@ -434,6 +445,8 @@ function applyRemote(p){
   Object.keys(fresh).forEach(function(k){S[k]=fresh[k];});
   Object.keys(p).forEach(function(k){S[k]=p[k];});
   if(!Array.isArray(S.reves))S.reves=[];
+  if(!Array.isArray(S.customPersonnes))S.customPersonnes=[];
+  if(!Array.isArray(S.customLieux))S.customLieux=[];
   S.reves.forEach(function(r){
     if(!Array.isArray(r.tags))r.tags=[];
     r.tags=r.tags.map(function(t){
@@ -578,13 +591,50 @@ function renderTagChips(){
   });
 }
 window.removeTag=function(i){editingTags.splice(i,1);renderTagChips();};
+function escapeRegExp(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function textContainsWord(text,term){
+  if(!term)return false;
+  try{
+    var re=new RegExp('(^|[^A-Za-zÀ-ÖØ-öø-ÿŒœÆæ])'+escapeRegExp(term)+'($|[^A-Za-zÀ-ÖØ-öø-ÿŒœÆæ])','i');
+    return re.test(text);
+  }catch(e){return text.toLowerCase().indexOf(term.toLowerCase())!==-1;}
+}
+function learnTag(type,value){
+  var list=type==='personne'?S.customPersonnes:(type==='lieu'?S.customLieux:null);
+  if(!list)return;
+  var already=list.some(function(x){return x.toLowerCase()===value.toLowerCase();});
+  if(already)return;
+  var staticKnown=type==='personne'?!!PEOPLE_WORDS_SET[value.toLowerCase()]:!!PLACE_WORDS_SET[value.toLowerCase()];
+  if(staticKnown)return;
+  list.push(value);
+  sched();
+}
+function renderLearnedLists(){
+  var pEl=ge('learnedPersonnesList'),lEl=ge('learnedLieuxList');
+  if(!pEl||!lEl)return;
+  pEl.innerHTML=(S.customPersonnes||[]).length?S.customPersonnes.map(function(n,i){
+    return '<span class="tag-chip tp-personne">'+esc(n)+' <span class="rm" onclick="removeLearned(\'personne\','+i+')">&#10005;</span></span>';
+  }).join(''):'<div class="empty" style="padding:0.5rem 0">Aucune personne apprise pour l\'instant.</div>';
+  lEl.innerHTML=(S.customLieux||[]).length?S.customLieux.map(function(n,i){
+    return '<span class="tag-chip tp-lieu">'+esc(n)+' <span class="rm" onclick="removeLearned(\'lieu\','+i+')">&#10005;</span></span>';
+  }).join(''):'<div class="empty" style="padding:0.5rem 0">Aucun lieu appris pour l\'instant.</div>';
+}
+window.removeLearned=function(type,i){
+  var list=type==='personne'?S.customPersonnes:S.customLieux;
+  if(list){list.splice(i,1);sched();renderLearnedLists();}
+};
+function addEditingTag(value,type){
+  var exists=editingTags.some(function(t){return t.value.toLowerCase()===value.toLowerCase();});
+  if(!exists){
+    editingTags.push({value:value,type:type});
+    renderTagChips();
+    if(type==='personne'||type==='lieu')learnTag(type,value);
+  }
+}
 function addTagOfType(type,inputId){
   var input=ge(inputId);
   var v=input.value.trim().replace(/,$/,'');
-  if(v){
-    var exists=editingTags.some(function(t){return t.value.toLowerCase()===v.toLowerCase();});
-    if(!exists){editingTags.push({value:v,type:type});renderTagChips();}
-  }
+  if(v)addEditingTag(v,type);
   input.value='';
 }
 window.addTagOfType=addTagOfType;
@@ -777,6 +827,20 @@ function detectSuggestions(text){
       out.push({type:'lieu',value:PLACE_WORDS_SET[lw]});
     }
   });
+  (S.customPersonnes||[]).forEach(function(entry){
+    var key='cp:'+entry.toLowerCase();
+    if(!seen[key]&&textContainsWord(text,entry)){
+      seen[key]=true;
+      out.push({type:'personne',value:entry});
+    }
+  });
+  (S.customLieux||[]).forEach(function(entry){
+    var key='cl:'+entry.toLowerCase();
+    if(!seen[key]&&textContainsWord(text,entry)){
+      seen[key]=true;
+      out.push({type:'lieu',value:entry});
+    }
+  });
   return out;
 }
 
@@ -801,8 +865,7 @@ function renderSuggestions(candidates){
 window.acceptSuggestion=function(i){
   var c=window._pendingSuggestions&&window._pendingSuggestions[i];
   if(!c)return;
-  var exists=editingTags.some(function(t){return t.value.toLowerCase()===c.value.toLowerCase();});
-  if(!exists){editingTags.push({value:c.value,type:c.type});renderTagChips();}
+  addEditingTag(c.value,c.type);
   runSuggestions();
 };
 
