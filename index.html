@@ -124,17 +124,17 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .suggest-row{display:flex;gap:6px;flex-wrap:wrap}
 .suggest-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;border:1.5px dashed var(--bds);background:transparent;color:var(--ts);cursor:pointer;font-weight:500}
 .suggest-chip:hover{background:var(--bt)}
-.suggest-chip.sc-prenom{border-color:var(--accent);color:var(--accent-d)}
+.suggest-chip.sc-personne{border-color:var(--accent);color:var(--accent-d)}
 .suggest-chip.sc-lieu{border-color:var(--mint-d);color:var(--mint-d)}
 .suggest-chip .sc-plus{font-weight:700}
 .tag-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;background:var(--bt);color:var(--accent-d);font-weight:600;white-space:nowrap}
-.tag-chip.tp-prenom{background:var(--accent);color:#fff}
-.tag-chip.tp-prenom .rm{color:#fff}
+.tag-chip.tp-personne{background:var(--accent);color:#fff}
+.tag-chip.tp-personne .rm{color:#fff}
 .tag-chip.tp-lieu{background:var(--mint);color:#0F5C3E}
 .tag-chip .rm{cursor:pointer;opacity:0.6;font-size:13px}
 .tag-chip .rm:hover{opacity:1}
 .tag-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;background:var(--bt);color:var(--accent-d);font-weight:600;white-space:nowrap;margin:2px 3px 2px 0}
-.tag-pill.tp-prenom{background:var(--accent);color:#fff}
+.tag-pill.tp-personne{background:var(--accent);color:#fff}
 .tag-pill.tp-lieu{background:var(--mint);color:#0F5C3E}
 .detect-btn-row{margin-top:8px}
 
@@ -327,9 +327,9 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       </div>
     </div>
     <div class="field">
-      <label class="fl">&#128100; Prénoms</label>
-      <div class="tag-input-row" id="tagRowPrenom">
-        <input type="text" id="tagInputPrenom" placeholder="Ajouter un prénom, Entrée pour valider">
+      <label class="fl">&#128100; Personnes</label>
+      <div class="tag-input-row" id="tagRowPersonne">
+        <input type="text" id="tagInputPersonne" placeholder="Ajouter une personne, Entrée pour valider">
       </div>
     </div>
     <div class="field">
@@ -436,7 +436,11 @@ function applyRemote(p){
   if(!Array.isArray(S.reves))S.reves=[];
   S.reves.forEach(function(r){
     if(!Array.isArray(r.tags))r.tags=[];
-    r.tags=r.tags.map(function(t){return typeof t==='string'?{value:t,type:'autre'}:t;});
+    r.tags=r.tags.map(function(t){
+      if(typeof t==='string')return {value:t,type:'autre'};
+      if(t.type==='prenom')return {value:t.value,type:'personne'};
+      return t;
+    });
     if(!Array.isArray(r.emotions))r.emotions=[];
     if(typeof r.lucide!=='boolean')r.lucide=false;
     delete r.humeur;
@@ -560,12 +564,12 @@ window.toggleEmotion=function(key){
 };
 
 function tagChipHtml(t,i){
-  var cls='tag-chip'+(t.type==='prenom'?' tp-prenom':t.type==='lieu'?' tp-lieu':'');
+  var cls='tag-chip'+(t.type==='personne'?' tp-personne':t.type==='lieu'?' tp-lieu':'');
   return '<span class="'+cls+'" data-i="'+i+'">'+esc(t.value)+' <span class="rm" onclick="removeTag('+i+')">&#10005;</span></span>';
 }
 function renderTagChips(){
-  ['tagRowPrenom','tagRowLieu','tagRowAutre'].forEach(function(rowId,idx){
-    var type=['prenom','lieu','autre'][idx];
+  ['tagRowPersonne','tagRowLieu','tagRowAutre'].forEach(function(rowId,idx){
+    var type=['personne','lieu','autre'][idx];
     var row=ge(rowId);
     var input=row.querySelector('input');
     var html=editingTags.map(function(t,i){return t.type===type?tagChipHtml(t,i):'';}).join('');
@@ -607,7 +611,7 @@ window.openReveModal=function(id){
 };
 window.closeReveModal=function(){ge('ovReve').classList.remove('open');};
 window.saveReve=function(){
-  addTagOfType('prenom','tagInputPrenom');
+  addTagOfType('personne','tagInputPersonne');
   addTagOfType('lieu','tagInputLieu');
   addTagOfType('autre','tagInputAutre');
   var id=ge('reveId').value;
@@ -645,7 +649,7 @@ window.confirmDeleteReve=function(){
 /* Enter key adds tag (par zone) */
 document.addEventListener('keydown',function(e){
   if(!e.target)return;
-  var map={tagInputPrenom:'prenom',tagInputLieu:'lieu',tagInputAutre:'autre'};
+  var map={tagInputPersonne:'personne',tagInputLieu:'lieu',tagInputAutre:'autre'};
   var type=map[e.target.id];
   if(type&&(e.key==='Enter'||e.key===',')){
     e.preventDefault();addTagOfType(type,e.target.id);
@@ -663,7 +667,7 @@ function tagIconFor(value){
   S.reves.some(function(r){
     return (r.tags||[]).some(function(t){if(t.value===value){found=t.type;return true;}return false;});
   });
-  return found==='prenom'?'\uD83D\uDC64 ':found==='lieu'?'\uD83D\uDCCD ':'';
+  return found==='personne'?'\uD83D\uDC64 ':found==='lieu'?'\uD83D\uDCCD ':'';
 }
 function populateTagFilter(){
   var sel=ge('fltTag');
@@ -705,7 +709,7 @@ window.renderJournal=function(){
   }
   el.innerHTML=list.map(function(r){
     var tagsHtml=(r.tags||[]).map(function(t){
-      var cls='tag-pill'+(t.type==='prenom'?' tp-prenom':t.type==='lieu'?' tp-lieu':'');
+      var cls='tag-pill'+(t.type==='personne'?' tp-personne':t.type==='lieu'?' tp-lieu':'');
       return '<span class="'+cls+'">'+esc(t.value)+'</span>';
     }).join('');
     var emoHtml=(r.emotions||[]).map(function(k){return '<span class="dc-emo-pill" title="'+esc(emotionLabel(k))+'">'+emotionEmoji(k)+'</span>';}).join('');
@@ -724,7 +728,18 @@ window.renderJournal=function(){
 /* Liste locale de prénoms français courants (détection heuristique, non exhaustive) */
 var FIRST_NAMES=['Léa','Emma','Chloé','Manon','Camille','Sarah','Julie','Marie','Sophie','Laura','Claire','Anne','Céline','Nathalie','Isabelle','Sylvie','Nicole','Catherine','Valérie','Christine','Aurélie','Charlotte','Julia','Lucie','Pauline','Elise','Élise','Élodie','Amandine','Justine','Margaux','Océane','Inès','Léonie','Alice','Juliette','Louise','Jeanne','Rose','Adèle','Agathe','Amélie','Caroline','Corinne','Dominique','Émilie','Estelle','Fabienne','Florence','Françoise','Ghislaine','Hélène','Jacqueline','Josiane','Laetitia','Laure','Léna','Lisa','Madeleine','Marguerite','Martine','Mathilde','Maud','Mélanie','Michèle','Mireille','Monique','Nadège','Nadine','Odile','Patricia','Renée','Sandra','Sandrine','Solange','Suzanne','Véronique','Virginie','Yvette','Yvonne',
 'Lucas','Hugo','Léo','Louis','Gabriel','Jules','Arthur','Nathan','Thomas','Antoine','Maxime','Alexandre','Nicolas','Julien','Romain','Baptiste','Mathieu','Kevin','Guillaume','David','Vincent','Pierre','Paul','Simon','Adrien','Damien','Cyril','Fabien','Sébastien','Olivier','Laurent','Xavier','Benjamin','Clément','Quentin','Victor','Raphaël','Noah','Timothé','Théo','Mathis','Enzo','Ethan','Nolan','Tom','Yanis','Rayan','Sacha','Eliott','Axel','Bastien','Florian','Jérôme','Frédéric','Christophe','Philippe','Michel','Jacques','Bernard','Daniel','Alain','Patrick','Gérard','Marc','Éric','Franck','Stéphane','Emmanuel','François','Denis','Henri','Marcel','Roger','André','Claude','Yves','Bruno','Didier','Pascal','Gilles','Jean'];
-var FIRST_NAMES_SET={};FIRST_NAMES.forEach(function(n){FIRST_NAMES_SET[n.toLowerCase()]=n;});
+/* Surnoms / diminutifs français courants */
+var NICKNAMES=['Alex','Seb','Manu','Nico','Vince','Max','Sam','Flo','Steph','Cathy','Béa','Bea','Mimi','Loulou','Bibi','Pat','Fred','Greg','Chris','Nanou','Riri','Fifi','Titi','Zaza','Caro','Delph','Val','Gaby','Will','Dédé','Mumu','Coco','Milou','Nini','Momo','Lulu','Toto','Jules','Manue','Marie-Ange','Jo','Mano'];
+
+/* Liens familiaux et relationnels (mot simple, tokenisable) */
+var FAMILY_WORDS=['Papa','Maman','Père','Mère','Frère','Sœur','Soeur','Mamie','Papi','Papy','Tonton','Tata','Oncle','Tante','Cousin','Cousine','Fils','Fille','Mari','Femme','Époux','Épouse','Copain','Copine','Voisin','Voisine','Ami','Amie','Parrain','Marraine','Filleul','Filleule'];
+
+/* Fusion en une seule table de correspondance pour le type "personne" */
+var PEOPLE_WORDS_SET={};
+FIRST_NAMES.concat(NICKNAMES).concat(FAMILY_WORDS).forEach(function(n){PEOPLE_WORDS_SET[n.toLowerCase()]=n;});
+
+/* Liens familiaux composés (non tokenisables tels quels à cause du tiret/espace) */
+var PEOPLE_PHRASES=['beau-père','belle-mère','beau-frère','belle-sœur','belle-soeur','grand-père','grand-mère','grands-parents','meilleur ami','meilleure amie'];
 
 /* Liste locale de mots/lieux courants (noms communs + grandes villes) */
 var PLACE_WORDS=['maison','appartement','chambre','cuisine','salon','grenier','cave','garage','jardin','école','collège','lycée','université','bureau','usine','hôpital','clinique','pharmacie','gare','aéroport','port','plage','mer','océan','montagne','forêt','campagne','ville','village','rue','route','autoroute','pont','tunnel','rivière','lac','fleuve','île','désert','grotte','caverne','château','église','cimetière','restaurant','café','magasin','supermarché','piscine','stade','parc','place','marché','hôtel','ascenseur','escalier','toit','balcon','terrasse','cour','parking','voiture','train','avion','bateau','bus','métro','tramway',
@@ -739,17 +754,23 @@ function detectSuggestions(text){
   if(!text)return out;
   var lower=text.toLowerCase();
   PLACE_PHRASES.forEach(function(p){
-    if(lower.indexOf(p)!==-1&&!seen[p]){
-      seen[p]=true;
-      out.push({type:'lieu',value:p.split(' ').map(capitalizeWord).join(' ').replace(/-/g,'-')});
+    if(lower.indexOf(p)!==-1&&!seen['lp:'+p]){
+      seen['lp:'+p]=true;
+      out.push({type:'lieu',value:p.split(' ').map(capitalizeWord).join(' ')});
     }
   });
-  var words=text.match(/[A-Za-zÀ-ÿ]+/g)||[];
+  PEOPLE_PHRASES.forEach(function(p){
+    if(lower.indexOf(p)!==-1&&!seen['pp:'+p]){
+      seen['pp:'+p]=true;
+      out.push({type:'personne',value:p.split(' ').map(capitalizeWord).join(' ')});
+    }
+  });
+  var words=text.match(/[A-Za-zÀ-ÖØ-öø-ÿŒœÆæ]+/g)||[];
   words.forEach(function(w){
     var lw=w.toLowerCase();
-    if(FIRST_NAMES_SET[lw]&&!seen['p:'+lw]){
+    if(PEOPLE_WORDS_SET[lw]&&!seen['p:'+lw]){
       seen['p:'+lw]=true;
-      out.push({type:'prenom',value:FIRST_NAMES_SET[lw]});
+      out.push({type:'personne',value:PEOPLE_WORDS_SET[lw]});
     }
     if(PLACE_WORDS_SET[lw]&&!seen['l:'+lw]){
       seen['l:'+lw]=true;
@@ -771,8 +792,8 @@ function renderSuggestions(candidates){
   if(!candidates||candidates.length===0){wrap.style.display='none';row.innerHTML='';return;}
   wrap.style.display='block';
   row.innerHTML=candidates.map(function(c,i){
-    var cls=c.type==='prenom'?'sc-prenom':'sc-lieu';
-    var icon=c.type==='prenom'?'\uD83D\uDC64':'\uD83D\uDCCD';
+    var cls=c.type==='personne'?'sc-personne':'sc-lieu';
+    var icon=c.type==='personne'?'\uD83D\uDC64':'\uD83D\uDCCD';
     return '<div class="suggest-chip '+cls+'" onclick="acceptSuggestion('+i+')" data-idx="'+i+'"><span class="sc-plus">+</span>'+icon+' '+esc(c.value)+'</div>';
   }).join('');
   window._pendingSuggestions=candidates;
@@ -871,7 +892,7 @@ window.renderAnalyse=function(){
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Évolution des émotions</div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Répartition des émotions</div>'+distHtml+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+barList(wordFrequency())+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128100; Prénoms les plus fréquents</div>'+barList(tagFrequencyByType('prenom'))+'</div>';
+  html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128100; Personnes les plus fréquentes</div>'+barList(tagFrequencyByType('personne'))+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#128205; Lieux les plus fréquents</div>'+barList(tagFrequencyByType('lieu'))+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">&#127991; Autres tags les plus fréquents</div>'+barList(tagFrequencyByType('autre'))+'</div>';
   ge('analyseContent').innerHTML=html;
