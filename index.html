@@ -119,10 +119,19 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .tag-input-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;border:1px solid var(--bds);border-radius:var(--r);padding:8px;background:var(--bp)}
 .tag-input-row input{border:none;flex:1;min-width:100px;padding:4px}
 .tag-input-row input:focus{outline:none}
+.suggest-wrap{margin-top:8px}
+.suggest-label{font-size:11px;color:var(--tt);text-transform:uppercase;letter-spacing:0.03em;font-weight:600;margin-bottom:5px}
+.suggest-row{display:flex;gap:6px;flex-wrap:wrap}
+.suggest-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;border:1.5px dashed var(--bds);background:transparent;color:var(--ts);cursor:pointer;font-weight:500}
+.suggest-chip:hover{background:var(--bt)}
+.suggest-chip.sc-prenom{border-color:var(--accent);color:var(--accent-d)}
+.suggest-chip.sc-lieu{border-color:var(--mint-d);color:var(--mint-d)}
+.suggest-chip .sc-plus{font-weight:700}
 .tag-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;background:var(--bt);color:var(--accent-d);font-weight:600;white-space:nowrap}
 .tag-chip .rm{cursor:pointer;opacity:0.6;font-size:13px}
 .tag-chip .rm:hover{opacity:1}
 .tag-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;background:var(--bt);color:var(--accent-d);font-weight:600;white-space:nowrap;margin:2px 3px 2px 0}
+.detect-btn-row{margin-top:8px}
 
 /* DREAM CARD LIST */
 .dream-card{background:var(--bp);border:1px solid var(--bd);border-radius:var(--rl);padding:1.1rem 1.25rem;margin-bottom:12px;cursor:pointer;transition:box-shadow .12s}
@@ -306,6 +315,13 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       <label class="fl">Tags</label>
       <div class="tag-input-row" id="tagInputRow">
         <input type="text" id="tagInput" placeholder="Ajouter un tag, Entrée pour valider">
+      </div>
+      <div class="detect-btn-row">
+        <button type="button" class="bs2" onclick="runSuggestions()">&#128269; Détecter prénoms &amp; lieux</button>
+      </div>
+      <div class="suggest-wrap" id="suggestWrap" style="display:none">
+        <div class="suggest-label">Suggestions détectées dans le récit</div>
+        <div class="suggest-row" id="suggestRow"></div>
       </div>
     </div>
     <div class="field">
@@ -559,6 +575,7 @@ window.openReveModal=function(id){
   ge('lucideChk').className='chk'+(editingLucide?' on':'');
   ge('reveDeleteBtn').style.display=r?'inline-flex':'none';
   ge('ovReve').classList.add('open');
+  renderSuggestions([]);
 };
 window.closeReveModal=function(){ge('ovReve').classList.remove('open');};
 window.saveReve=function(){
@@ -660,7 +677,70 @@ window.renderJournal=function(){
   }).join('');
 };
 
-/* ---------- ANALYSE ---------- */
+/* ---------- SUGGESTIONS DE TAGS (prénoms / lieux) ---------- */
+/* Liste locale de prénoms français courants (détection heuristique, non exhaustive) */
+var FIRST_NAMES=['Léa','Emma','Chloé','Manon','Camille','Sarah','Julie','Marie','Sophie','Laura','Claire','Anne','Céline','Nathalie','Isabelle','Sylvie','Nicole','Catherine','Valérie','Christine','Aurélie','Charlotte','Julia','Lucie','Pauline','Elise','Élise','Élodie','Amandine','Justine','Margaux','Océane','Inès','Léonie','Alice','Juliette','Louise','Jeanne','Rose','Adèle','Agathe','Amélie','Caroline','Corinne','Dominique','Émilie','Estelle','Fabienne','Florence','Françoise','Ghislaine','Hélène','Jacqueline','Josiane','Laetitia','Laure','Léna','Lisa','Madeleine','Marguerite','Martine','Mathilde','Maud','Mélanie','Michèle','Mireille','Monique','Nadège','Nadine','Odile','Patricia','Renée','Sandra','Sandrine','Solange','Suzanne','Véronique','Virginie','Yvette','Yvonne',
+'Lucas','Hugo','Léo','Louis','Gabriel','Jules','Arthur','Nathan','Thomas','Antoine','Maxime','Alexandre','Nicolas','Julien','Romain','Baptiste','Mathieu','Kevin','Guillaume','David','Vincent','Pierre','Paul','Simon','Adrien','Damien','Cyril','Fabien','Sébastien','Olivier','Laurent','Xavier','Benjamin','Clément','Quentin','Victor','Raphaël','Noah','Timothé','Théo','Mathis','Enzo','Ethan','Nolan','Tom','Yanis','Rayan','Sacha','Eliott','Axel','Bastien','Florian','Jérôme','Frédéric','Christophe','Philippe','Michel','Jacques','Bernard','Daniel','Alain','Patrick','Gérard','Marc','Éric','Franck','Stéphane','Emmanuel','François','Denis','Henri','Marcel','Roger','André','Claude','Yves','Bruno','Didier','Pascal','Gilles','Jean'];
+var FIRST_NAMES_SET={};FIRST_NAMES.forEach(function(n){FIRST_NAMES_SET[n.toLowerCase()]=n;});
+
+/* Liste locale de mots/lieux courants (noms communs + grandes villes) */
+var PLACE_WORDS=['maison','appartement','chambre','cuisine','salon','grenier','cave','garage','jardin','école','collège','lycée','université','bureau','usine','hôpital','clinique','pharmacie','gare','aéroport','port','plage','mer','océan','montagne','forêt','campagne','ville','village','rue','route','autoroute','pont','tunnel','rivière','lac','fleuve','île','désert','grotte','caverne','château','église','cimetière','restaurant','café','magasin','supermarché','piscine','stade','parc','place','marché','hôtel','ascenseur','escalier','toit','balcon','terrasse','cour','parking','voiture','train','avion','bateau','bus','métro','tramway',
+'Paris','Lyon','Marseille','Toulouse','Nice','Nantes','Bordeaux','Lille','Strasbourg','Rennes','Montpellier','Grenoble','Londres','Rome','Madrid','Berlin','Bruxelles','Amsterdam','Tokyo','Barcelone','Genève','Venise','Milan'];
+var PLACE_WORDS_SET={};PLACE_WORDS.forEach(function(w){PLACE_WORDS_SET[w.toLowerCase()]=w;});
+var PLACE_PHRASES=['new york','centre-ville','centre ville','los angeles'];
+
+function capitalizeWord(w){return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();}
+
+function detectSuggestions(text){
+  var out=[];var seen={};
+  if(!text)return out;
+  var lower=text.toLowerCase();
+  PLACE_PHRASES.forEach(function(p){
+    if(lower.indexOf(p)!==-1&&!seen[p]){
+      seen[p]=true;
+      out.push({type:'lieu',value:p.split(' ').map(capitalizeWord).join(' ').replace(/-/g,'-')});
+    }
+  });
+  var words=text.match(/[A-Za-zÀ-ÿ]+/g)||[];
+  words.forEach(function(w){
+    var lw=w.toLowerCase();
+    if(FIRST_NAMES_SET[lw]&&!seen['p:'+lw]){
+      seen['p:'+lw]=true;
+      out.push({type:'prenom',value:FIRST_NAMES_SET[lw]});
+    }
+    if(PLACE_WORDS_SET[lw]&&!seen['l:'+lw]){
+      seen['l:'+lw]=true;
+      out.push({type:'lieu',value:PLACE_WORDS_SET[lw]});
+    }
+  });
+  return out;
+}
+
+function runSuggestions(){
+  var text=(ge('reveTitre').value||'')+' '+(ge('reveTexte').value||'');
+  var found=detectSuggestions(text);
+  var existing={};editingTags.forEach(function(t){existing[t.toLowerCase()]=true;});
+  var candidates=found.filter(function(f){return !existing[f.value.toLowerCase()];});
+  renderSuggestions(candidates);
+}
+function renderSuggestions(candidates){
+  var wrap=ge('suggestWrap');var row=ge('suggestRow');
+  if(!candidates||candidates.length===0){wrap.style.display='none';row.innerHTML='';return;}
+  wrap.style.display='block';
+  row.innerHTML=candidates.map(function(c,i){
+    var cls=c.type==='prenom'?'sc-prenom':'sc-lieu';
+    var icon=c.type==='prenom'?'\uD83D\uDC64':'\uD83D\uDCCD';
+    return '<div class="suggest-chip '+cls+'" onclick="acceptSuggestion('+i+')" data-idx="'+i+'"><span class="sc-plus">+</span>'+icon+' '+esc(c.value)+'</div>';
+  }).join('');
+  window._pendingSuggestions=candidates;
+}
+window.acceptSuggestion=function(i){
+  var c=window._pendingSuggestions&&window._pendingSuggestions[i];
+  if(!c)return;
+  if(editingTags.indexOf(c.value)===-1){editingTags.push(c.value);renderTagChips();}
+  runSuggestions();
+};
+
 var STOPWORDS=['le','la','les','un','une','des','de','du','et','ou','à','au','aux','en','dans','sur','pour','par','avec','sans','ce','cet','cette','ces','se','sa','son','ses','mon','ma','mes','ton','ta','tes','notre','nos','votre','vos','leur','leurs','je','tu','il','elle','on','nous','vous','ils','elles','me','te','lui','y','qui','que','quoi','dont','où','est','était','étaient','sont','été','être','avoir','ai','as','a','avons','avez','ont','avait','avaient','suis','es','sommes','êtes','pas','plus','très','comme','mais','donc','or','ni','car','si','alors','puis','ensuite','tout','tous','toute','toutes','autre','autres','même','aussi','déjà','encore','bien','peu','beaucoup','moi','toi','lui','eux','soi','cela','ça','ceci','celui','celle','ceux','celles','quand','comment','pourquoi','parce','entre','vers','chez','depuis','pendant','avant','après','sous','contre','soit','étais','était'];
 function wordFrequency(){
   var counts={};
