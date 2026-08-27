@@ -189,6 +189,11 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .fstate-opt.sel-tous{background:var(--accent-lt);color:var(--accent-d)}
 .fstate-opt.sel-period{background:var(--accent-lt);color:var(--accent-d)}
 .dc-status-ico{display:inline-flex;flex-shrink:0;margin-top:3px}
+.star-ico{width:20px;height:20px;flex-shrink:0;display:block}
+.star-btn{cursor:pointer;display:inline-flex;align-items:center;background:none;border:none;padding:0;margin-top:3px;flex-shrink:0}
+.star-filter-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--bds);background:var(--bp);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
+.star-filter-btn:hover{background:var(--bt)}
+.star-filter-btn.active{border-color:var(--amber-d);background:var(--amber)}
 .dc-status-ico svg{width:20px;height:20px}
 .brume-counter:hover{opacity:0.85}
 
@@ -316,6 +321,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       </div>
       <div class="filter-row" id="filterRow1">
         <input type="text" id="fltSearch" placeholder="Rechercher un mot, un titre…" oninput="renderJournal()">
+        <button type="button" class="star-filter-btn" id="favoriFilterBtn" onclick="toggleFavoriFilter()" aria-label="Filtrer les rêves importants"></button>
         <div class="fstate-toggle" id="brumeFilterToggle"></div>
         <button type="button" class="filter-collapse-btn" onclick="toggleFilterCollapse()" aria-label="Afficher/masquer les filtres">
           Filtres <span class="chevron" id="filterCollapseChevron">&#9660;</span>
@@ -453,6 +459,13 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       </div>
       <div class="fh">Brume : brouillon rapide noté à la volée. Éclairci : rêve relu et complété.</div>
     </div>
+    <div class="field">
+      <label class="fl">Importance</label>
+      <div class="lucid-toggle" onclick="toggleModalFavori()">
+        <span id="modalStarIcon"></span>
+        <span style="font-size:13px" id="modalStarLabel">Marquer comme important</span>
+      </div>
+    </div>
     <div class="mf">
       <button class="bdel" id="reveDeleteBtn" onclick="deleteReveConfirm()" style="display:none;margin-right:auto">Supprimer</button>
       <button class="bs2" onclick="closeReveModal()">Annuler</button>
@@ -576,6 +589,7 @@ function applyRemote(p){
     if(!Array.isArray(r.emotions))r.emotions=[];
     if(typeof r.lucide!=='boolean')r.lucide=false;
     if(typeof r.brume!=='boolean')r.brume=false;
+    if(typeof r.favori!=='boolean')r.favori=false;
     delete r.humeur;
   });
 }
@@ -694,6 +708,7 @@ var editingTags=[];
 var editingEmotions=[];
 var editingLucide=false;
 var editingBrume=false;
+var editingFavori=false;
 var deleteTargetId=null;
 
 function emotionOptHtml(e,selected,filterVariant){
@@ -794,6 +809,16 @@ window.setBrumeStatus=function(v){
   editingBrume=v;
   renderStatusToggle();
 };
+function renderModalStar(){
+  var icon=ge('modalStarIcon');
+  if(icon)icon.innerHTML=starIconHtml(editingFavori);
+  var lbl=ge('modalStarLabel');
+  if(lbl)lbl.textContent=editingFavori?'Marqué comme important':'Marquer comme important';
+}
+window.toggleModalFavori=function(){
+  editingFavori=!editingFavori;
+  renderModalStar();
+};
 
 window.openReveModal=function(id){
   var r=id?S.reves.find(function(x){return x.id===id;}):null;
@@ -806,9 +831,11 @@ window.openReveModal=function(id){
   editingEmotions=r?r.emotions.slice():[];
   editingLucide=r?r.lucide:false;
   editingBrume=r?!!r.brume:true;
+  editingFavori=r?!!r.favori:false;
   renderEmotionRow();renderTagChips();
   ge('lucideChk').className='chk'+(editingLucide?' on':'');
   renderStatusToggle();
+  renderModalStar();
   ge('reveDeleteBtn').style.display=r?'inline-flex':'none';
   ge('ovReve').classList.add('open');
   renderSuggestions([]);
@@ -825,10 +852,10 @@ window.saveReve=function(){
   if(id){
     var r=S.reves.find(function(x){return x.id===id;});
     if(r){
-      r.date=date;r.titre=titre;r.texte=texte;r.tags=editingTags.slice();r.emotions=editingEmotions.slice();r.lucide=editingLucide;r.brume=editingBrume;
+      r.date=date;r.titre=titre;r.texte=texte;r.tags=editingTags.slice();r.emotions=editingEmotions.slice();r.lucide=editingLucide;r.brume=editingBrume;r.favori=editingFavori;
     }
   }else{
-    S.reves.push({id:uid(),date:date,titre:titre,texte:texte,tags:editingTags.slice(),emotions:editingEmotions.slice(),lucide:editingLucide,brume:editingBrume,createdAt:Date.now()});
+    S.reves.push({id:uid(),date:date,titre:titre,texte:texte,tags:editingTags.slice(),emotions:editingEmotions.slice(),lucide:editingLucide,brume:editingBrume,favori:editingFavori,createdAt:Date.now()});
   }
   closeReveModal();
   sched();
@@ -946,6 +973,11 @@ function statusIconHtml(isBrume){
   var color=isBrume?'var(--sky-d)':'var(--amber-d)';
   return '<span class="dc-status-ico" style="color:'+color+'" title="'+(isBrume?'Brume':'Éclairci')+'">'+svg+'</span>';
 }
+function starIconHtml(active){
+  var fill=active?'var(--amber-d)':'none';
+  var stroke=active?'var(--amber-d)':'var(--ts)';
+  return '<svg class="star-ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+}
 function reveMatchesSearch(r,q){
   if((r.titre||'').toLowerCase().indexOf(q)!==-1)return true;
   if((r.texte||'').toLowerCase().indexOf(q)!==-1)return true;
@@ -957,6 +989,7 @@ window.renderJournal=function(){
   renderFltEmotionsRow();
   populateTagFilter();
   renderBrumeFilterToggle();
+  renderFavoriFilterBtn();
   var q=(ge('fltSearch').value||'').toLowerCase().trim();
   var tagPersonne=ge('fltTagPersonne').value;
   var tagLieu=ge('fltTagLieu').value;
@@ -977,6 +1010,7 @@ window.renderJournal=function(){
     if(fltEmotions.length&&!(r.emotions||[]).some(function(k){return fltEmotions.indexOf(k)!==-1;}))return false;
     if(brumeFilterValue==='brume'&&!r.brume)return false;
     if(brumeFilterValue==='complet'&&r.brume)return false;
+    if(fltFavoriOnly&&!r.favori)return false;
     return true;
   });
   var el=ge('journalList');
@@ -994,6 +1028,7 @@ window.renderJournal=function(){
     return '<div class="dream-card">'+
       '<div class="dc-top" onclick="toggleDreamCollapse(\''+r.id+'\')">'+
         '<div style="display:flex;align-items:flex-start;gap:8px">'+
+          '<span class="star-btn" onclick="event.stopPropagation();toggleFavori(\''+r.id+'\')" title="'+(r.favori?'Retirer l\'importance':'Marquer comme important')+'">'+starIconHtml(!!r.favori)+'</span>'+
           statusIconHtml(!!r.brume)+
           '<div><div class="dc-title">'+esc(r.titre)+'</div><div class="dc-date">'+fmtDateFR(r.date)+'</div></div>'+
         '</div>'+
@@ -1020,6 +1055,24 @@ window.toggleDreamCollapse=function(id){
 window.filterBrumeOnly=function(){
   setBrumeFilter('brume');
 };
+window.toggleFavori=function(id){
+  var r=S.reves.find(function(x){return x.id===id;});
+  if(!r)return;
+  r.favori=!r.favori;
+  sched();
+  renderJournal();
+};
+var fltFavoriOnly=false;
+window.toggleFavoriFilter=function(){
+  fltFavoriOnly=!fltFavoriOnly;
+  renderJournal();
+};
+function renderFavoriFilterBtn(){
+  var btn=ge('favoriFilterBtn');
+  if(!btn)return;
+  btn.innerHTML=starIconHtml(fltFavoriOnly);
+  btn.classList.toggle('active',fltFavoriOnly);
+}
 
 /* ---------- SUGGESTIONS DE TAGS (prénoms / lieux) ---------- */
 /* Liste locale de prénoms français courants (détection heuristique, non exhaustive) */
