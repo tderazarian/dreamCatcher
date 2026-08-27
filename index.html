@@ -194,6 +194,12 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .filter-collapse-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:1.5px solid var(--bds);border-radius:20px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--ts);cursor:pointer;font-family:var(--fs);flex-shrink:0}
 .filter-collapse-btn:hover{background:var(--bt)}
 .filter-collapse-btn .chevron{transition:transform .2s;font-size:10px;display:inline-block}
+.an-card-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;margin-bottom:10px}
+.an-card-hdr .chevron{transition:transform .2s;font-size:11px;color:var(--ts);flex-shrink:0}
+.an-card-hdr .chevron.open{transform:rotate(180deg)}
+.an-card-hdr-left{display:flex;align-items:center;gap:8px}
+.an-card-body{display:none}
+.an-card-body.open{display:block}
 .filter-collapse-btn .chevron.open{transform:rotate(180deg)}
 .filter-row select,.filter-row input{width:auto;min-width:140px}
 
@@ -1189,7 +1195,7 @@ function emotionsByMonth(){
     if(!byMonth[m]){byMonth[m]={};EMOTIONS.forEach(function(e){byMonth[m][e.key]=0;});}
     (r.emotions||[]).forEach(function(k){if(byMonth[m][k]!==undefined)byMonth[m][k]++;});
   });
-  var months=Object.keys(byMonth).sort();
+  var months=Object.keys(byMonth).sort().reverse();
   return months.map(function(m){return {month:m,counts:byMonth[m]};});
 }
 function barList(items,maxLabel){
@@ -1220,21 +1226,52 @@ function stackedEmotionsChart(data){
   });
   return html;
 }
-function frequencyCardHtml(type,title){
+function analyseCardHtml(id,title,bodyHtml,extraHeaderHtml){
+  return '<div class="card">'+
+    '<div class="an-card-hdr" onclick="toggleAnalyseCard(\''+id+'\')">'+
+      '<div class="an-card-hdr-left"><div class="fl" style="margin-bottom:0">'+title+'</div>'+(extraHeaderHtml||'')+'</div>'+
+      '<span class="chevron" id="anChevron-'+id+'">&#9660;</span>'+
+    '</div>'+
+    '<div class="an-card-body" id="anBody-'+id+'">'+bodyHtml+'</div>'+
+  '</div>';
+}
+function getAnalyseCollapseStates(){
+  try{return JSON.parse(localStorage.getItem('dc_an_collapse')||'{}');}catch(e){return {};}
+}
+window.toggleAnalyseCard=function(id){
+  var body=ge('anBody-'+id);
+  var chevron=ge('anChevron-'+id);
+  if(!body)return;
+  var open=body.classList.toggle('open');
+  if(chevron)chevron.classList.toggle('open',open);
+  var states=getAnalyseCollapseStates();
+  states[id]=open;
+  try{localStorage.setItem('dc_an_collapse',JSON.stringify(states));}catch(e){}
+};
+function applyAnalyseCollapseStates(){
+  var states=getAnalyseCollapseStates();
+  ['evolution','repartition','motscles','personne','lieu','autre'].forEach(function(id){
+    var open=states.hasOwnProperty(id)?states[id]:true;
+    var body=ge('anBody-'+id);
+    var chevron=ge('anChevron-'+id);
+    if(body)body.classList.toggle('open',open);
+    if(chevron)chevron.classList.toggle('open',open);
+  });
+}
+function frequencyCardBody(type){
   var all=tagFrequencyByType(type);
   var frequent=all.filter(function(t){return t.count>=TAG_TOP_MIN_OCCURRENCES;});
   var rest=all.filter(function(t){return t.count<TAG_TOP_MIN_OCCURRENCES;});
-  var html='<div class="card"><div class="fl" style="margin-bottom:10px">'+title+'</div>';
+  var html='';
   if(frequent.length===0&&rest.length===0){
     html+='<div class="empty">Pas encore assez de données.</div>';
   }else{
     html+=frequent.length?barList(frequent):'<div class="empty" style="padding:0.5rem 0">Aucun tag utilisé au moins '+TAG_TOP_MIN_OCCURRENCES+' fois pour l\'instant.</div>';
     if(rest.length){
-      html+='<div class="freq-toggle" onclick="toggleFreqCollapse(\''+type+'\')"><span>Voir '+rest.length+' autre'+(rest.length>1?'s':'')+'</span><span class="freq-chevron" id="freqChevron-'+type+'">&#9660;</span></div>';
+      html+='<div class="freq-toggle" onclick="event.stopPropagation();toggleFreqCollapse(\''+type+'\')"><span>Voir '+rest.length+' autre'+(rest.length>1?'s':'')+'</span><span class="freq-chevron" id="freqChevron-'+type+'">&#9660;</span></div>';
       html+='<div class="freq-rest" id="freqRest-'+type+'">'+barList(rest)+'</div>';
     }
   }
-  html+='</div>';
   return html;
 }
 window.toggleFreqCollapse=function(type){
@@ -1256,13 +1293,14 @@ window.renderAnalyse=function(){
     '<div class="metric"><div class="ml">Rêves lucides</div><div class="mv">'+lucidPct+'%</div></div>'+
     '<div class="metric"><div class="ml">Émotion dominante</div><div class="mv">'+domHtml+'</div></div>'+
   '</div>';
-  html+='<div class="card"><div class="fl-row" style="margin-bottom:10px"><div class="fl" style="margin-bottom:0">Évolution des émotions</div><button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button></div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">Répartition des émotions</div>'+distHtml+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+wordCloudHtml(wordFrequency())+'</div>';
-  html+=frequencyCardHtml('personne','&#128100; Personnes les plus fréquentes');
-  html+=frequencyCardHtml('lieu','&#128205; Lieux les plus fréquents');
-  html+=frequencyCardHtml('autre','&#127991; Autres tags les plus fréquents');
+  html+=analyseCardHtml('evolution','Évolution des émotions',stackedEmotionsChart(emotionsByMonth()),'<button type="button" class="info-btn" onclick="event.stopPropagation();openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>');
+  html+=analyseCardHtml('repartition','Répartition des émotions',distHtml);
+  html+=analyseCardHtml('motscles','Mots-clés les plus fréquents',wordCloudHtml(wordFrequency()));
+  html+=analyseCardHtml('personne','&#128100; Personnes les plus fréquentes',frequencyCardBody('personne'));
+  html+=analyseCardHtml('lieu','&#128205; Lieux les plus fréquents',frequencyCardBody('lieu'));
+  html+=analyseCardHtml('autre','&#127991; Autres tags les plus fréquents',frequencyCardBody('autre'));
   ge('analyseContent').innerHTML=html;
+  applyAnalyseCollapseStates();
 };
 
 /* ---------- EXPORT ---------- */
