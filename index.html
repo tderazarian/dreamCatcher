@@ -111,11 +111,11 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .dropdown-multi-btn:hover{background:var(--bt)}
 .dropdown-multi-btn .chevron{transition:transform .2s;font-size:10px;color:var(--ts)}
 .dropdown-multi-btn .chevron.open{transform:rotate(180deg)}
-.dropdown-multi-panel{display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--bp);border:1px solid var(--bd);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,0.14);padding:6px;z-index:50;min-width:220px}
+.dropdown-multi-panel{display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--bp);border:1px solid var(--bd);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,0.14);padding:6px;z-index:50;min-width:230px}
 .dropdown-multi-panel.open{display:block}
-.dropdown-multi-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--tp)}
+.dropdown-multi-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--tp);white-space:nowrap}
 .dropdown-multi-item:hover{background:var(--bt)}
-.dropdown-multi-item input[type=checkbox]{width:16px;height:16px;flex-shrink:0;accent-color:var(--accent)}
+.dropdown-multi-item span{white-space:nowrap}
 .info-btn:hover{background:var(--bt)}
 .emotion-info-item{margin-bottom:16px}
 .emotion-info-item:last-child{margin-bottom:0}
@@ -883,7 +883,7 @@ function renderFltEmotionsRow(){
   var panel=ge('emoFilterPanel');
   panel.innerHTML=EMOTIONS.map(function(e){
     var checked=fltEmotions.indexOf(e.key)!==-1;
-    return '<label class="dropdown-multi-item"><input type="checkbox" '+(checked?'checked':'')+' onchange="toggleFilterEmotion(\''+e.key+'\')"> '+e.emoji+' '+esc(e.label)+'</label>';
+    return '<div class="dropdown-multi-item" onclick="toggleFilterEmotion(\''+e.key+'\')"><div class="chk'+(checked?' on':'')+'"></div><span>'+e.emoji+' '+esc(e.label)+'</span></div>';
   }).join('');
   var n=fltEmotions.length;
   var label=ge('emoFilterLabel');
