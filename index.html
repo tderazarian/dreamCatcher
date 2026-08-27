@@ -181,7 +181,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .status-opt.sel-eclairci{border-color:var(--amber-d);background:var(--amber);color:#6B4A12}
 .brume-ico{width:14px;height:14px;vertical-align:-2px;flex-shrink:0}
 .fstate-toggle{display:flex;border-radius:20px;overflow:hidden;border:1.5px solid var(--bds);flex-shrink:0}
-.fstate-opt{padding:8px 16px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:var(--bp);color:var(--ts);white-space:nowrap;transition:all .12s}
+.fstate-opt{padding:8px 16px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:var(--bp);color:var(--ts);white-space:nowrap;transition:all .12s;display:inline-flex;align-items:center;gap:5px}
 .fstate-opt:not(:last-child){border-right:1.5px solid var(--bds)}
 .fstate-opt.sel-brume{background:var(--sky);color:#1E3E5C}
 .fstate-opt.sel-eclairci{background:var(--amber);color:#6B4A12}
@@ -329,8 +329,6 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
             <div class="dropdown-multi-panel" id="emoFilterPanel"></div>
           </div>
           <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
-        </div>
-        <div class="filter-row frow-tight">
           <select id="fltTagPersonne" onchange="renderJournal()"><option value="">&#128100; Toutes les personnes</option></select>
           <select id="fltTagLieu" onchange="renderJournal()"><option value="">&#128205; Tous les lieux</option></select>
           <select id="fltTagAutre" onchange="renderJournal()"><option value="">&#127991; Tous les autres tags</option></select>
@@ -926,10 +924,10 @@ window.setBrumeFilter=function(v){
 };
 function renderBrumeFilterToggle(){
   var wrap=ge('brumeFilterToggle');
-  var opts=[['brume','Brumes','sel-brume'],['complet','Éclaircis','sel-eclairci'],['','Tous','sel-tous']];
+  var opts=[['brume',BRUME_ICON_SVG+' Brumes','sel-brume'],['complet',ECLAIRCI_ICON_SVG+' Éclaircis','sel-eclairci'],['','Tous','sel-tous']];
   wrap.innerHTML=opts.map(function(o){
     var cls='fstate-opt'+(brumeFilterValue===o[0]?' '+o[2]:'');
-    return '<div class="'+cls+'" onclick="setBrumeFilter(\''+o[0]+'\')">'+esc(o[1])+'</div>';
+    return '<div class="'+cls+'" onclick="setBrumeFilter(\''+o[0]+'\')">'+o[1]+'</div>';
   }).join('');
 }
 window.toggleFilterCollapse=function(forceState){
