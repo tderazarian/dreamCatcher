@@ -1090,18 +1090,23 @@ window.acceptSuggestion=function(i){
   runSuggestions();
 };
 
-var STOPWORDS=['le','la','les','un','une','des','de','du','et','ou','à','au','aux','en','dans','sur','pour','par','avec','sans','ce','cet','cette','ces','se','sa','son','ses','mon','ma','mes','ton','ta','tes','notre','nos','votre','vos','leur','leurs','je','tu','il','elle','on','nous','vous','ils','elles','me','te','lui','y','qui','que','quoi','dont','où','est','était','étaient','sont','été','être','avoir','ai','as','a','avons','avez','ont','avait','avaient','suis','es','sommes','êtes','pas','plus','très','comme','mais','donc','or','ni','car','si','alors','puis','ensuite','tout','tous','toute','toutes','autre','autres','même','aussi','déjà','encore','bien','peu','beaucoup','moi','toi','lui','eux','soi','cela','ça','ceci','celui','celle','ceux','celles','quand','comment','pourquoi','parce','entre','vers','chez','depuis','pendant','avant','après','sous','contre','soit','étais','était'];
+var STOPWORDS=['le','la','les','un','une','des','de','du','et','ou','à','au','aux','en','dans','sur','pour','par','avec','sans','ce','cet','cette','ces','se','sa','son','ses','mon','ma','mes','ton','ta','tes','notre','nos','votre','vos','leur','leurs','je','tu','il','elle','on','nous','vous','ils','elles','me','te','lui','y','qui','que','quoi','dont','où','est','était','étaient','sont','été','être','avoir','ai','as','a','avons','avez','ont','avait','avaient','suis','es','sommes','êtes','pas','plus','très','comme','mais','donc','or','ni','car','si','alors','puis','ensuite','tout','tous','toute','toutes','autre','autres','même','aussi','déjà','encore','bien','peu','beaucoup','moi','toi','lui','eux','soi','cela','ça','ceci','celui','celle','ceux','celles','quand','comment','pourquoi','parce','entre','vers','chez','depuis','pendant','avant','après','sous','contre','soit','étais','était',
+'chose','choses','sorte','sortes','vraiment','assez','plutôt','genre','truc','trucs','tellement','dedans','dehors','ici','voilà','ainsi','cependant','toutefois','néanmoins','trop','quelque','quelques','rien','chacun','chacune','certains','certaines','plusieurs','jusqu','jusque','lorsque','tandis','malgré'];
+var WORD_CLOUD_MIN_DREAMS=2;
 function wordFrequency(){
   var counts={};
   S.reves.forEach(function(r){
     var txt=((r.titre||'')+' '+(r.texte||'')).toLowerCase();
     var words=txt.match(/[a-zàâäéèêëïîôöùûüÿçœæ]{3,}/g)||[];
+    var seenInThisReve={};
     words.forEach(function(w){
       if(STOPWORDS.indexOf(w)!==-1)return;
+      if(seenInThisReve[w])return;
+      seenInThisReve[w]=true;
       counts[w]=(counts[w]||0)+1;
     });
   });
-  return Object.keys(counts).map(function(w){return {word:w,count:counts[w]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
+  return Object.keys(counts).map(function(w){return {word:w,count:counts[w]};}).filter(function(w){return w.count>=WORD_CLOUD_MIN_DREAMS;}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
 }
 function hashStr(s){
   var h=0;
@@ -1118,7 +1123,7 @@ function wordCloudHtml(words){
     var fontSize=(13+ratio*22).toFixed(0);
     var color=palette[hashStr(w.word)%palette.length];
     var rotate=(hashStr(w.word+'r')%7)-3;
-    return '<span class="wc-word" style="font-size:'+fontSize+'px;color:'+color+';transform:rotate('+rotate+'deg)" title="'+w.count+' occurrence'+(w.count>1?'s':'')+'">'+esc(w.word)+'</span>';
+    return '<span class="wc-word" style="font-size:'+fontSize+'px;color:'+color+';transform:rotate('+rotate+'deg)" title="présent dans '+w.count+' rêve'+(w.count>1?'s':'')+'">'+esc(w.word)+'</span>';
   }).join('');
   return '<div class="wordcloud">'+html+'</div>';
 }
