@@ -155,6 +155,9 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .dc-excerpt{font-size:13px;color:var(--ts);margin-top:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dc-tags{margin-top:10px}
 .lucid-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border-radius:20px;background:var(--pink);color:#7A3A54;font-weight:600}
+.brume-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border-radius:20px;background:var(--sky);color:#1E3E5C;font-weight:600}
+.brume-counter{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px;border-radius:20px;background:var(--sky);color:#1E3E5C;font-weight:600;cursor:pointer;border:none;font-family:var(--fs)}
+.brume-counter:hover{opacity:0.85}
 
 /* FILTERS */
 .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
@@ -198,6 +201,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
   .modal{width:100%;max-width:100%;margin:0;border-radius:12px 12px 0 0;max-height:90vh}
   .ov.open{align-items:flex-end;padding:0}
   .bar-label{width:80px}
+  #reveTexte{min-height:240px;font-size:16px;line-height:1.5}
 }
 </style>
 </head>
@@ -258,7 +262,10 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <!-- PAGE JOURNAL -->
     <div class="pg" id="pg-journal">
       <div class="ph">
-        <div class="pt">Journal des rêves</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="pt">Journal des rêves</div>
+          <div id="brumeCounterWrap"></div>
+        </div>
         <button class="bp" onclick="openReveModal(null)">+ Nouveau rêve</button>
       </div>
       <div class="filter-row">
@@ -273,6 +280,11 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
         <select id="fltLucide" onchange="renderJournal()">
           <option value="">Lucides et non-lucides</option>
           <option value="1">&#10024; Lucides uniquement</option>
+        </select>
+        <select id="fltBrume" onchange="renderJournal()">
+          <option value="">Tous les statuts</option>
+          <option value="brume">&#127787; Brume uniquement</option>
+          <option value="complet">Complets uniquement</option>
         </select>
       </div>
       <div id="journalList"></div>
@@ -380,6 +392,12 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       <div class="lucid-toggle" onclick="toggleLucide()">
         <div class="chk" id="lucideChk"></div>
         <span style="font-size:13px">Rêve lucide</span>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lucid-toggle" onclick="toggleBrume()">
+        <div class="chk" id="brumeChk"></div>
+        <span style="font-size:13px">&#127787; Noté en Brume (brouillon rapide, à compléter plus tard)</span>
       </div>
     </div>
     <div class="mf">
@@ -502,6 +520,7 @@ function applyRemote(p){
     });
     if(!Array.isArray(r.emotions))r.emotions=[];
     if(typeof r.lucide!=='boolean')r.lucide=false;
+    if(typeof r.brume!=='boolean')r.brume=false;
     delete r.humeur;
   });
 }
@@ -619,6 +638,7 @@ function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMont
 var editingTags=[];
 var editingEmotions=[];
 var editingLucide=false;
+var editingBrume=false;
 var deleteTargetId=null;
 
 function emotionOptHtml(e,selected,filterVariant){
@@ -709,6 +729,10 @@ window.toggleLucide=function(){
   editingLucide=!editingLucide;
   ge('lucideChk').className='chk'+(editingLucide?' on':'');
 };
+window.toggleBrume=function(){
+  editingBrume=!editingBrume;
+  ge('brumeChk').className='chk'+(editingBrume?' on':'');
+};
 
 window.openReveModal=function(id){
   var r=id?S.reves.find(function(x){return x.id===id;}):null;
@@ -720,8 +744,10 @@ window.openReveModal=function(id){
   editingTags=r?r.tags.map(function(t){return typeof t==='string'?{value:t,type:'autre'}:t;}):[];
   editingEmotions=r?r.emotions.slice():[];
   editingLucide=r?r.lucide:false;
+  editingBrume=r?!!r.brume:false;
   renderEmotionRow();renderTagChips();
   ge('lucideChk').className='chk'+(editingLucide?' on':'');
+  ge('brumeChk').className='chk'+(editingBrume?' on':'');
   ge('reveDeleteBtn').style.display=r?'inline-flex':'none';
   ge('ovReve').classList.add('open');
   renderSuggestions([]);
@@ -738,10 +764,10 @@ window.saveReve=function(){
   if(id){
     var r=S.reves.find(function(x){return x.id===id;});
     if(r){
-      r.date=date;r.titre=titre;r.texte=texte;r.tags=editingTags.slice();r.emotions=editingEmotions.slice();r.lucide=editingLucide;
+      r.date=date;r.titre=titre;r.texte=texte;r.tags=editingTags.slice();r.emotions=editingEmotions.slice();r.lucide=editingLucide;r.brume=editingBrume;
     }
   }else{
-    S.reves.push({id:uid(),date:date,titre:titre,texte:texte,tags:editingTags.slice(),emotions:editingEmotions.slice(),lucide:editingLucide,createdAt:Date.now()});
+    S.reves.push({id:uid(),date:date,titre:titre,texte:texte,tags:editingTags.slice(),emotions:editingEmotions.slice(),lucide:editingLucide,brume:editingBrume,createdAt:Date.now()});
   }
   closeReveModal();
   sched();
@@ -820,6 +846,14 @@ window.renderJournal=function(){
   var tagLieu=ge('fltTagLieu').value;
   var tagAutre=ge('fltTagAutre').value;
   var lucOnly=ge('fltLucide').value==='1';
+  var brumeFilter=ge('fltBrume').value;
+  var brumeCount=S.reves.filter(function(r){return r.brume;}).length;
+  var counterWrap=ge('brumeCounterWrap');
+  if(brumeCount>0){
+    counterWrap.innerHTML='<button type="button" class="brume-counter" onclick="filterBrumeOnly()">&#127787; '+brumeCount+' en Brume à compléter</button>';
+  }else{
+    counterWrap.innerHTML='';
+  }
   var list=S.reves.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0);});
   list=list.filter(function(r){
     if(q&&!((r.titre||'').toLowerCase().indexOf(q)!==-1||(r.texte||'').toLowerCase().indexOf(q)!==-1))return false;
@@ -828,6 +862,8 @@ window.renderJournal=function(){
     if(tagAutre&&!(r.tags||[]).some(function(t){return t.type==='autre'&&t.value===tagAutre;}))return false;
     if(fltEmotions.length&&!(r.emotions||[]).some(function(k){return fltEmotions.indexOf(k)!==-1;}))return false;
     if(lucOnly&&!r.lucide)return false;
+    if(brumeFilter==='brume'&&!r.brume)return false;
+    if(brumeFilter==='complet'&&r.brume)return false;
     return true;
   });
   var el=ge('journalList');
@@ -847,9 +883,13 @@ window.renderJournal=function(){
         '<div class="dc-emotions">'+emoHtml+'</div>'+
       '</div>'+
       (r.texte?'<div class="dc-excerpt">'+esc(r.texte)+'</div>':'')+
-      '<div class="dc-tags">'+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
+      '<div class="dc-tags">'+(r.brume?'<span class="brume-badge">&#127787; Brume</span> ':'')+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
     '</div>';
   }).join('');
+};
+window.filterBrumeOnly=function(){
+  ge('fltBrume').value='brume';
+  renderJournal();
 };
 
 /* ---------- SUGGESTIONS DE TAGS (prénoms / lieux) ---------- */
