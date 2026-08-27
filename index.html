@@ -163,10 +163,19 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .status-opt.sel-brume{border-color:var(--sky-d);background:var(--sky);color:#1E3E5C}
 .status-opt.sel-eclairci{border-color:var(--amber-d);background:var(--amber);color:#6B4A12}
 .brume-ico{width:14px;height:14px;vertical-align:-2px;flex-shrink:0}
+.fstate-toggle{display:flex;border-radius:20px;overflow:hidden;border:1.5px solid var(--bds);flex-shrink:0}
+.fstate-opt{padding:8px 16px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:var(--bp);color:var(--ts);white-space:nowrap;transition:all .12s}
+.fstate-opt:not(:last-child){border-right:1.5px solid var(--bds)}
+.fstate-opt.sel-brume{background:var(--sky);color:#1E3E5C}
+.fstate-opt.sel-eclairci{background:var(--amber);color:#6B4A12}
+.fstate-opt.sel-tous{background:var(--accent);color:#fff}
+.dc-status-ico{display:inline-flex;flex-shrink:0;margin-top:3px}
+.dc-status-ico svg{width:20px;height:20px}
 .brume-counter:hover{opacity:0.85}
 
 /* FILTERS */
 .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.filter-row.frow-tight{margin-bottom:8px}
 .filter-row select,.filter-row input{width:auto;min-width:140px}
 
 /* STATS */
@@ -274,24 +283,18 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
         </div>
         <button class="bp" onclick="openReveModal(null)">+ Nouveau rêve</button>
       </div>
-      <div class="filter-row">
-        <input type="text" id="fltSearch" placeholder="Rechercher un mot, un titre…" oninput="renderJournal()">
+      <div class="filter-row frow-tight">
+        <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
+        <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
+      </div>
+      <div class="filter-row frow-tight">
         <select id="fltTagPersonne" onchange="renderJournal()"><option value="">&#128100; Toutes les personnes</option></select>
         <select id="fltTagLieu" onchange="renderJournal()"><option value="">&#128205; Tous les lieux</option></select>
         <select id="fltTagAutre" onchange="renderJournal()"><option value="">&#127991; Tous les autres tags</option></select>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
-          <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
-        </div>
-        <select id="fltLucide" onchange="renderJournal()">
-          <option value="">Lucides et non-lucides</option>
-          <option value="1">&#10024; Lucides uniquement</option>
-        </select>
-        <select id="fltBrume" onchange="renderJournal()">
-          <option value="">Tous les statuts</option>
-          <option value="brume">&#127787; Brume uniquement</option>
-          <option value="complet">&#9728; Éclairci uniquement</option>
-        </select>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="fltSearch" placeholder="Rechercher un mot, un titre…" oninput="renderJournal()">
+        <div class="fstate-toggle" id="brumeFilterToggle"></div>
       </div>
       <div id="journalList"></div>
     </div>
@@ -854,15 +857,32 @@ function renderFltEmotionsRow(){
     return emotionOptHtml(e,fltEmotions.indexOf(e.key)!==-1,true);
   }).join('');
 }
+var brumeFilterValue='';
+window.setBrumeFilter=function(v){
+  brumeFilterValue=v;
+  renderJournal();
+};
+function renderBrumeFilterToggle(){
+  var wrap=ge('brumeFilterToggle');
+  var opts=[['brume','Brumes','sel-brume'],['complet','Éclaircis','sel-eclairci'],['','Tous','sel-tous']];
+  wrap.innerHTML=opts.map(function(o){
+    var cls='fstate-opt'+(brumeFilterValue===o[0]?' '+o[2]:'');
+    return '<div class="'+cls+'" onclick="setBrumeFilter(\''+o[0]+'\')">'+esc(o[1])+'</div>';
+  }).join('');
+}
+function statusIconHtml(isBrume){
+  var svg=isBrume?BRUME_ICON_SVG:ECLAIRCI_ICON_SVG;
+  var color=isBrume?'var(--sky-d)':'var(--amber-d)';
+  return '<span class="dc-status-ico" style="color:'+color+'" title="'+(isBrume?'Brume':'Éclairci')+'">'+svg+'</span>';
+}
 window.renderJournal=function(){
   renderFltEmotionsRow();
   populateTagFilter();
+  renderBrumeFilterToggle();
   var q=(ge('fltSearch').value||'').toLowerCase().trim();
   var tagPersonne=ge('fltTagPersonne').value;
   var tagLieu=ge('fltTagLieu').value;
   var tagAutre=ge('fltTagAutre').value;
-  var lucOnly=ge('fltLucide').value==='1';
-  var brumeFilter=ge('fltBrume').value;
   var brumeCount=S.reves.filter(function(r){return r.brume;}).length;
   var counterWrap=ge('brumeCounterWrap');
   if(brumeCount>0){
@@ -877,9 +897,8 @@ window.renderJournal=function(){
     if(tagLieu&&!(r.tags||[]).some(function(t){return t.type==='lieu'&&t.value===tagLieu;}))return false;
     if(tagAutre&&!(r.tags||[]).some(function(t){return t.type==='autre'&&t.value===tagAutre;}))return false;
     if(fltEmotions.length&&!(r.emotions||[]).some(function(k){return fltEmotions.indexOf(k)!==-1;}))return false;
-    if(lucOnly&&!r.lucide)return false;
-    if(brumeFilter==='brume'&&!r.brume)return false;
-    if(brumeFilter==='complet'&&r.brume)return false;
+    if(brumeFilterValue==='brume'&&!r.brume)return false;
+    if(brumeFilterValue==='complet'&&r.brume)return false;
     return true;
   });
   var el=ge('journalList');
@@ -895,17 +914,19 @@ window.renderJournal=function(){
     var emoHtml=(r.emotions||[]).map(function(k){return '<span class="dc-emo-pill" title="'+esc(emotionTooltip(k))+'">'+emotionEmoji(k)+'</span>';}).join('');
     return '<div class="dream-card" onclick="openReveModal(\''+r.id+'\')">'+
       '<div class="dc-top">'+
-        '<div><div class="dc-title">'+esc(r.titre)+'</div><div class="dc-date">'+fmtDateFR(r.date)+'</div></div>'+
+        '<div style="display:flex;align-items:flex-start;gap:8px">'+
+          statusIconHtml(!!r.brume)+
+          '<div><div class="dc-title">'+esc(r.titre)+'</div><div class="dc-date">'+fmtDateFR(r.date)+'</div></div>'+
+        '</div>'+
         '<div class="dc-emotions">'+emoHtml+'</div>'+
       '</div>'+
       (r.texte?'<div class="dc-excerpt">'+esc(r.texte)+'</div>':'')+
-      '<div class="dc-tags">'+(r.brume?'<span class="brume-badge">'+BRUME_ICON_SVG+' Brume</span> ':'')+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
+      '<div class="dc-tags">'+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
     '</div>';
   }).join('');
 };
 window.filterBrumeOnly=function(){
-  ge('fltBrume').value='brume';
-  renderJournal();
+  setBrumeFilter('brume');
 };
 
 /* ---------- SUGGESTIONS DE TAGS (prénoms / lieux) ---------- */
