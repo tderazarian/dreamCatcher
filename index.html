@@ -21,6 +21,7 @@
   --sky:#A9C7EA;--sky-d:#3E6FA3;
   --topbar:#2E3D33;
   --dot-ok:#4CAF7D;--dot-err:#E2686B;--dot-warn:#F0C14B;
+  --icon-line:#57544A;
 }
 @media(prefers-color-scheme:dark){
   :root{--tp:#EDEAE2;--ts:#AFAB9F;--tt:#87847A;--bp:#221F1A;--bs:#17150F;--bt:#2C2921;--bd:#3A362C;--bds:#4A4536}
@@ -454,8 +455,8 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <div class="field">
       <label class="fl">Statut</label>
       <div class="status-toggle">
-        <div class="status-opt" id="statusOptBrume" onclick="setBrumeStatus(true)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg> Brume</div>
-        <div class="status-opt" id="statusOptEclairci" onclick="setBrumeStatus(false)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/></svg> Éclairci</div>
+        <div class="status-opt" id="statusOptBrume" onclick="setBrumeStatus(true)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="var(--amber)"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="var(--icon-line)" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="var(--icon-line)" stroke-width="2.4" stroke-linecap="round"/></svg> Brume</div>
+        <div class="status-opt" id="statusOptEclairci" onclick="setBrumeStatus(false)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="var(--amber)"/></svg> Éclairci</div>
       </div>
       <div class="fh">Brume : brouillon rapide noté à la volée. Éclairci : rêve relu et complété.</div>
     </div>
@@ -506,8 +507,8 @@ var cfg={token:'',gistId:''};
 /* Paramètres de l'application : seuil et taille du "top" des tags (filtres + page Analyse) */
 var TAG_TOP_MIN_OCCURRENCES=2;
 var TAG_TOP_MAX_ITEMS=5;
-var BRUME_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
-var ECLAIRCI_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/></svg>';
+var BRUME_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="var(--amber)"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="var(--icon-line)" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="var(--icon-line)" stroke-width="2.4" stroke-linecap="round"/></svg>';
+var ECLAIRCI_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="var(--amber)"/></svg>';
 var saveTimer=null;
 function ge(id){return document.getElementById(id);}
 
@@ -970,12 +971,11 @@ window.toggleFilterCollapse=function(forceState){
 };
 function statusIconHtml(isBrume){
   var svg=isBrume?BRUME_ICON_SVG:ECLAIRCI_ICON_SVG;
-  var color=isBrume?'var(--sky-d)':'var(--amber-d)';
-  return '<span class="dc-status-ico" style="color:'+color+'" title="'+(isBrume?'Brume':'Éclairci')+'">'+svg+'</span>';
+  return '<span class="dc-status-ico" title="'+(isBrume?'Brume':'Éclairci')+'">'+svg+'</span>';
 }
 function starIconHtml(active){
-  var fill=active?'var(--amber-d)':'none';
-  var stroke=active?'var(--amber-d)':'var(--ts)';
+  var fill=active?'var(--amber)':'none';
+  var stroke=active?'var(--amber)':'var(--ts)';
   return '<svg class="star-ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 }
 function reveMatchesSearch(r,q){
