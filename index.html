@@ -103,6 +103,8 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .dc-emo-pill{font-size:18px;line-height:1}
 /* STACKED CHART LEGEND */
 .legend-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.wordcloud{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 16px;padding:14px 6px}
+.wc-word{font-weight:700;line-height:1;white-space:nowrap;display:inline-block;cursor:default}
 .fl-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .fl-row .fl{margin-bottom:0}
 .info-btn{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--bds);background:var(--bp);color:var(--ts);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
@@ -1101,6 +1103,25 @@ function wordFrequency(){
   });
   return Object.keys(counts).map(function(w){return {word:w,count:counts[w]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15);
 }
+function hashStr(s){
+  var h=0;
+  for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;}
+  return h;
+}
+function wordCloudHtml(words){
+  if(words.length===0)return '<div class="empty">Pas encore assez de données.</div>';
+  var max=words[0].count,min=words[words.length-1].count;
+  var palette=['var(--accent-d)','var(--mint-d)','var(--pink-d)','var(--sky-d)','var(--amber-d)','var(--coral-d)'];
+  var shuffled=words.slice().sort(function(a,b){return hashStr(a.word)-hashStr(b.word);});
+  var html=shuffled.map(function(w){
+    var ratio=max===min?1:(w.count-min)/(max-min);
+    var fontSize=(13+ratio*22).toFixed(0);
+    var color=palette[hashStr(w.word)%palette.length];
+    var rotate=(hashStr(w.word+'r')%7)-3;
+    return '<span class="wc-word" style="font-size:'+fontSize+'px;color:'+color+';transform:rotate('+rotate+'deg)" title="'+w.count+' occurrence'+(w.count>1?'s':'')+'">'+esc(w.word)+'</span>';
+  }).join('');
+  return '<div class="wordcloud">'+html+'</div>';
+}
 function tagFrequencyByType(type){
   var counts={};
   S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)counts[t.value]=(counts[t.value]||0)+1;});});
@@ -1232,7 +1253,7 @@ window.renderAnalyse=function(){
   '</div>';
   html+='<div class="card"><div class="fl-row" style="margin-bottom:10px"><div class="fl" style="margin-bottom:0">Évolution des émotions</div><button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button></div>'+stackedEmotionsChart(emotionsByMonth())+'</div>';
   html+='<div class="card"><div class="fl" style="margin-bottom:10px">Répartition des émotions</div>'+distHtml+'</div>';
-  html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+barList(wordFrequency())+'</div>';
+  html+='<div class="card"><div class="fl" style="margin-bottom:10px">Mots-clés les plus fréquents</div>'+wordCloudHtml(wordFrequency())+'</div>';
   html+=frequencyCardHtml('personne','&#128100; Personnes les plus fréquentes');
   html+=frequencyCardHtml('lieu','&#128205; Lieux les plus fréquents');
   html+=frequencyCardHtml('autre','&#127991; Autres tags les plus fréquents');
