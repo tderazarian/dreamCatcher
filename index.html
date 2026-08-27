@@ -162,6 +162,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .status-opt:hover{background:var(--bt)}
 .status-opt.sel-brume{border-color:var(--sky-d);background:var(--sky);color:#1E3E5C}
 .status-opt.sel-eclairci{border-color:var(--amber-d);background:var(--amber);color:#6B4A12}
+.brume-ico{width:14px;height:14px;vertical-align:-2px;flex-shrink:0}
 .brume-counter:hover{opacity:0.85}
 
 /* FILTERS */
@@ -402,7 +403,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <div class="field">
       <label class="fl">Statut</label>
       <div class="status-toggle">
-        <div class="status-opt" id="statusOptBrume" onclick="setBrumeStatus(true)">&#127787; Brume</div>
+        <div class="status-opt" id="statusOptBrume" onclick="setBrumeStatus(true)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg> Brume</div>
         <div class="status-opt" id="statusOptEclairci" onclick="setBrumeStatus(false)">&#9728; Éclairci</div>
       </div>
       <div class="fh">Brume : brouillon rapide noté à la volée. Éclairci : rêve relu et complété.</div>
@@ -447,6 +448,7 @@ var cfg={token:'',gistId:''};
 /* Paramètres de l'application : seuil et taille du "top" des tags (filtres + page Analyse) */
 var TAG_TOP_MIN_OCCURRENCES=2;
 var TAG_TOP_MAX_ITEMS=5;
+var BRUME_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 var saveTimer=null;
 function ge(id){return document.getElementById(id);}
 
@@ -863,7 +865,7 @@ window.renderJournal=function(){
   var brumeCount=S.reves.filter(function(r){return r.brume;}).length;
   var counterWrap=ge('brumeCounterWrap');
   if(brumeCount>0){
-    counterWrap.innerHTML='<button type="button" class="brume-counter" onclick="filterBrumeOnly()">&#127787; '+brumeCount+' brume'+(brumeCount>1?'s':'')+' à éclaircir</button>';
+    counterWrap.innerHTML='<button type="button" class="brume-counter" onclick="filterBrumeOnly()">'+BRUME_ICON_SVG+' '+brumeCount+' brume'+(brumeCount>1?'s':'')+' à éclaircir</button>';
   }else{
     counterWrap.innerHTML='';
   }
@@ -896,7 +898,7 @@ window.renderJournal=function(){
         '<div class="dc-emotions">'+emoHtml+'</div>'+
       '</div>'+
       (r.texte?'<div class="dc-excerpt">'+esc(r.texte)+'</div>':'')+
-      '<div class="dc-tags">'+(r.brume?'<span class="brume-badge">&#127787; Brume</span> ':'')+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
+      '<div class="dc-tags">'+(r.brume?'<span class="brume-badge">'+BRUME_ICON_SVG+' Brume</span> ':'')+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
     '</div>';
   }).join('');
 };
