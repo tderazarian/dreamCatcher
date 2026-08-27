@@ -161,6 +161,10 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 
 /* DREAM CARD LIST */
 .dream-card{background:var(--bp);border:1px solid var(--bd);border-radius:var(--rl);padding:1.1rem 1.25rem;margin-bottom:12px;cursor:pointer;transition:box-shadow .12s}
+.dc-chevron{transition:transform .2s;font-size:11px;color:var(--ts);flex-shrink:0}
+.dc-chevron.open{transform:rotate(180deg)}
+.dc-body{display:none}
+.dc-body.open{display:block}
 .dream-card:hover{box-shadow:0 4px 16px rgba(60,50,100,0.08)}
 .dc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .dc-title{font-size:15px;font-weight:600;color:var(--tp)}
@@ -885,6 +889,7 @@ function populateTagFilter(){
   });
 }
 var fltEmotions=[];
+var expandedReveIds={};
 window.toggleFilterEmotion=function(key){
   var i=fltEmotions.indexOf(key);
   if(i===-1)fltEmotions.push(key);else fltEmotions.splice(i,1);
@@ -986,18 +991,32 @@ window.renderJournal=function(){
       return '<span class="'+cls+'">'+esc(t.value)+'</span>';
     }).join('');
     var emoHtml=(r.emotions||[]).map(function(k){return '<span class="dc-emo-pill" title="'+esc(emotionTooltip(k))+'">'+emotionEmoji(k)+'</span>';}).join('');
-    return '<div class="dream-card" onclick="openReveModal(\''+r.id+'\')">'+
-      '<div class="dc-top">'+
+    var isOpen=!!expandedReveIds[r.id];
+    return '<div class="dream-card">'+
+      '<div class="dc-top" onclick="toggleDreamCollapse(\''+r.id+'\')">'+
         '<div style="display:flex;align-items:flex-start;gap:8px">'+
           statusIconHtml(!!r.brume)+
           '<div><div class="dc-title">'+esc(r.titre)+'</div><div class="dc-date">'+fmtDateFR(r.date)+'</div></div>'+
         '</div>'+
-        '<div class="dc-emotions">'+emoHtml+'</div>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<div class="dc-emotions">'+emoHtml+'</div>'+
+          '<span class="dc-chevron'+(isOpen?' open':'')+'" id="dcChevron-'+r.id+'">&#9660;</span>'+
+        '</div>'+
       '</div>'+
-      (r.texte?'<div class="dc-excerpt">'+esc(r.texte)+'</div>':'')+
-      '<div class="dc-tags">'+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
+      '<div class="dc-body'+(isOpen?' open':'')+'" id="dcBody-'+r.id+'">'+
+        (r.texte?'<div class="dc-excerpt">'+esc(r.texte)+'</div>':'')+
+        '<div class="dc-tags">'+(r.lucide?'<span class="lucid-badge">&#10024; Lucide</span> ':'')+tagsHtml+'</div>'+
+        '<button type="button" class="bs2" style="margin-top:10px" onclick="event.stopPropagation();openReveModal(\''+r.id+'\')">&#9998; Modifier</button>'+
+      '</div>'+
     '</div>';
   }).join('');
+};
+window.toggleDreamCollapse=function(id){
+  expandedReveIds[id]=!expandedReveIds[id];
+  var body=ge('dcBody-'+id);
+  var chevron=ge('dcChevron-'+id);
+  if(body)body.classList.toggle('open',expandedReveIds[id]);
+  if(chevron)chevron.classList.toggle('open',expandedReveIds[id]);
 };
 window.filterBrumeOnly=function(){
   setBrumeFilter('brume');
