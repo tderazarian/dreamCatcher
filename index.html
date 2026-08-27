@@ -176,6 +176,12 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 /* FILTERS */
 .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
 .filter-row.frow-tight{margin-bottom:8px}
+.filter-collapsible{display:none;margin-bottom:1.25rem}
+.filter-collapsible.open{display:block}
+.filter-collapse-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:1.5px solid var(--bds);border-radius:20px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--ts);cursor:pointer;font-family:var(--fs);flex-shrink:0}
+.filter-collapse-btn:hover{background:var(--bt)}
+.filter-collapse-btn .chevron{transition:transform .2s;font-size:10px;display:inline-block}
+.filter-collapse-btn .chevron.open{transform:rotate(180deg)}
 .filter-row select,.filter-row input{width:auto;min-width:140px}
 
 /* STATS */
@@ -283,18 +289,23 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
         </div>
         <button class="bp" onclick="openReveModal(null)">+ Nouveau rêve</button>
       </div>
-      <div class="filter-row frow-tight">
-        <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
-        <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
-      </div>
-      <div class="filter-row frow-tight">
-        <select id="fltTagPersonne" onchange="renderJournal()"><option value="">&#128100; Toutes les personnes</option></select>
-        <select id="fltTagLieu" onchange="renderJournal()"><option value="">&#128205; Tous les lieux</option></select>
-        <select id="fltTagAutre" onchange="renderJournal()"><option value="">&#127991; Tous les autres tags</option></select>
-      </div>
-      <div class="filter-row">
+      <div class="filter-row" id="filterRow1">
         <input type="text" id="fltSearch" placeholder="Rechercher un mot, un titre…" oninput="renderJournal()">
         <div class="fstate-toggle" id="brumeFilterToggle"></div>
+        <button type="button" class="filter-collapse-btn" onclick="toggleFilterCollapse()" aria-label="Afficher/masquer les filtres">
+          Filtres <span class="chevron" id="filterCollapseChevron">&#9660;</span>
+        </button>
+      </div>
+      <div class="filter-collapsible" id="filterCollapsible">
+        <div class="filter-row frow-tight">
+          <div class="emotion-row" id="fltEmotionsRow" style="gap:6px"></div>
+          <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
+        </div>
+        <div class="filter-row frow-tight">
+          <select id="fltTagPersonne" onchange="renderJournal()"><option value="">&#128100; Toutes les personnes</option></select>
+          <select id="fltTagLieu" onchange="renderJournal()"><option value="">&#128205; Tous les lieux</option></select>
+          <select id="fltTagAutre" onchange="renderJournal()"><option value="">&#127991; Tous les autres tags</option></select>
+        </div>
       </div>
       <div id="journalList"></div>
     </div>
@@ -870,6 +881,16 @@ function renderBrumeFilterToggle(){
     return '<div class="'+cls+'" onclick="setBrumeFilter(\''+o[0]+'\')">'+esc(o[1])+'</div>';
   }).join('');
 }
+window.toggleFilterCollapse=function(forceState){
+  var wrap=ge('filterCollapsible');
+  var chevron=ge('filterCollapseChevron');
+  var row1=ge('filterRow1');
+  var open=forceState!==undefined?forceState:!wrap.classList.contains('open');
+  wrap.classList.toggle('open',open);
+  if(chevron)chevron.classList.toggle('open',open);
+  if(row1)row1.classList.toggle('frow-tight',open);
+  try{localStorage.setItem('dc_filters_open',open?'1':'0');}catch(e){}
+};
 function statusIconHtml(isBrume){
   var svg=isBrume?BRUME_ICON_SVG:ECLAIRCI_ICON_SVG;
   var color=isBrume?'var(--sky-d)':'var(--amber-d)';
@@ -1153,6 +1174,10 @@ window.exportJSON=function(){
 
 /* ---------- INIT ---------- */
 (function init(){
+  try{
+    var filtersOpen=localStorage.getItem('dc_filters_open')==='1';
+    toggleFilterCollapse(filtersOpen);
+  }catch(e){}
   try{
     var cachedCfg=localStorage.getItem(CFG_KEY);
     if(cachedCfg)cfg=JSON.parse(cachedCfg);
