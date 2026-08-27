@@ -790,7 +790,7 @@ window.openReveModal=function(id){
   editingTags=r?r.tags.map(function(t){return typeof t==='string'?{value:t,type:'autre'}:t;}):[];
   editingEmotions=r?r.emotions.slice():[];
   editingLucide=r?r.lucide:false;
-  editingBrume=r?!!r.brume:false;
+  editingBrume=r?!!r.brume:true;
   renderEmotionRow();renderTagChips();
   ge('lucideChk').className='chk'+(editingLucide?' on':'');
   renderStatusToggle();
@@ -930,6 +930,13 @@ function statusIconHtml(isBrume){
   var color=isBrume?'var(--sky-d)':'var(--amber-d)';
   return '<span class="dc-status-ico" style="color:'+color+'" title="'+(isBrume?'Brume':'Éclairci')+'">'+svg+'</span>';
 }
+function reveMatchesSearch(r,q){
+  if((r.titre||'').toLowerCase().indexOf(q)!==-1)return true;
+  if((r.texte||'').toLowerCase().indexOf(q)!==-1)return true;
+  if((r.tags||[]).some(function(t){return t.value.toLowerCase().indexOf(q)!==-1;}))return true;
+  if((r.emotions||[]).some(function(k){return emotionLabel(k).toLowerCase().indexOf(q)!==-1;}))return true;
+  return false;
+}
 window.renderJournal=function(){
   renderFltEmotionsRow();
   populateTagFilter();
@@ -947,7 +954,7 @@ window.renderJournal=function(){
   }
   var list=S.reves.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0);});
   list=list.filter(function(r){
-    if(q&&!((r.titre||'').toLowerCase().indexOf(q)!==-1||(r.texte||'').toLowerCase().indexOf(q)!==-1))return false;
+    if(q&&!reveMatchesSearch(r,q))return false;
     if(tagPersonne&&!(r.tags||[]).some(function(t){return t.type==='personne'&&t.value===tagPersonne;}))return false;
     if(tagLieu&&!(r.tags||[]).some(function(t){return t.type==='lieu'&&t.value===tagLieu;}))return false;
     if(tagAutre&&!(r.tags||[]).some(function(t){return t.type==='autre'&&t.value===tagAutre;}))return false;
@@ -1111,6 +1118,43 @@ function dominantEmotion(){
   EMOTIONS.forEach(function(e){if(!best||counts[e.key]>counts[best.key])best=e;});
   return best&&counts[best.key]>0?best:null;
 }
+function spiderEmotionsChart(){
+  var counts=emotionFrequency();
+  var max=Math.max.apply(null,EMOTIONS.map(function(e){return counts[e.key];}));
+  if(max===0)return '<div class="empty">Pas encore assez de données.</div>';
+  var n=EMOTIONS.length;
+  var cx=200,cy=175,R=90;
+  function pt(i,val){
+    var angle=(-90+i*(360/n))*Math.PI/180;
+    var r=val*R;
+    return {x:cx+r*Math.cos(angle),y:cy+r*Math.sin(angle)};
+  }
+  var rings=[0.25,0.5,0.75,1].map(function(frac){
+    var pts=EMOTIONS.map(function(e,i){var p=pt(i,frac);return p.x+','+p.y;}).join(' ');
+    return '<polygon points="'+pts+'" fill="none" stroke="var(--bd)" stroke-width="1"/>';
+  }).join('');
+  var axes=EMOTIONS.map(function(e,i){
+    var p=pt(i,1);
+    return '<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="var(--bd)" stroke-width="1"/>';
+  }).join('');
+  var dataPts=EMOTIONS.map(function(e,i){var p=pt(i,counts[e.key]/max);return p.x+','+p.y;}).join(' ');
+  var dataPolygon='<polygon points="'+dataPts+'" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent-d)" stroke-width="2"/>';
+  var dots=EMOTIONS.map(function(e,i){
+    var p=pt(i,counts[e.key]/max);
+    return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="var('+e.colorVar+'-d)"/>';
+  }).join('');
+  var labels=EMOTIONS.map(function(e,i){
+    var p=pt(i,1.35);
+    var anchor=p.x<cx-8?'end':(p.x>cx+8?'start':'middle');
+    var dy=p.y<cy-8?-2:(p.y>cy+8?10:4);
+    return '<text x="'+p.x+'" y="'+(p.y+dy)+'" font-size="12" text-anchor="'+anchor+'" fill="var(--tp)">'+e.emoji+' '+esc(e.label)+'</text>';
+  }).join('');
+  var svg='<svg viewBox="0 0 400 350" style="width:100%;max-width:400px;height:auto;display:block;margin:0 auto">'+rings+axes+dataPolygon+dots+labels+'</svg>';
+  var legend='<div class="legend-row" style="justify-content:center;margin-top:6px">'+EMOTIONS.map(function(e){
+    return '<div class="legend-item">'+e.emoji+' '+esc(e.label)+' : '+counts[e.key]+'</div>';
+  }).join('')+'</div>';
+  return svg+legend;
+}
 function emotionsByMonth(){
   var byMonth={};
   S.reves.forEach(function(r){
@@ -1179,9 +1223,7 @@ window.renderAnalyse=function(){
   var lucidPct=total?Math.round(100*S.reves.filter(function(r){return r.lucide;}).length/total):0;
   var dom=dominantEmotion();
   var domHtml=dom?(dom.emoji+' '+esc(dom.label)):'—';
-  var counts=emotionFrequency();
-  var emoBarItems=EMOTIONS.map(function(e){return {word:e.emoji+' '+e.label,count:counts[e.key]};});
-  var distHtml=barList(emoBarItems);
+  var distHtml=spiderEmotionsChart();
   var html='';
   html+='<div class="mgrid3">'+
     '<div class="metric"><div class="ml">Rêves enregistrés</div><div class="mv">'+total+'</div></div>'+
