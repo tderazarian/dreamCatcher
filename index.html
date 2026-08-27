@@ -1179,6 +1179,23 @@ function weekStartKey(dateStr){
   d.setDate(d.getDate()+diff);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
+var MONTHS_FR=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+var DAYS_FR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+function formatBucketLabel(key,granularity,period){
+  if(granularity==='day'){
+    var d=new Date(key+'T00:00:00');
+    return DAYS_FR[d.getDay()];
+  }
+  if(granularity==='week'){
+    var parts=key.split('-');
+    var monthIdx=parseInt(parts[1],10)-1;
+    return 'Semaine du '+parts[2]+' '+MONTHS_FR[monthIdx];
+  }
+  var parts=key.split('-');
+  var monthIdx=parseInt(parts[1],10)-1;
+  var monthName=capitalizeFirst(MONTHS_FR[monthIdx]);
+  return period==='annee'?monthName:(monthName+' '+parts[0]);
+}
 function emotionFrequency(reves){
   reves=reves||S.reves;
   var counts={};
@@ -1229,7 +1246,7 @@ function spiderEmotionsChart(reves){
   }).join('')+'</div>';
   return svg+legend;
 }
-function emotionsByMonth(reves,granularity){
+function emotionsByMonth(reves,granularity,period){
   reves=reves||S.reves;
   granularity=granularity||'month';
   var byBucket={};
@@ -1244,7 +1261,7 @@ function emotionsByMonth(reves,granularity){
     (r.emotions||[]).forEach(function(k){if(byBucket[key][k]!==undefined)byBucket[key][k]++;});
   });
   var keys=Object.keys(byBucket).sort().reverse();
-  return keys.map(function(k){return {month:k,counts:byBucket[k]};});
+  return keys.map(function(k){return {month:k,label:formatBucketLabel(k,granularity,period),counts:byBucket[k]};});
 }
 function barList(items,maxLabel){
   if(items.length===0)return '<div class="empty">Pas encore assez de données.</div>';
@@ -1270,7 +1287,7 @@ function stackedEmotionsChart(data){
       var pct=(c/total*100).toFixed(1);
       return '<div class="stack-seg" style="width:'+pct+'%;background:var('+e.colorVar+')" title="'+esc(e.label)+' : '+c+'"></div>';
     }).join(''):'';
-    html+='<div class="stack-row"><div class="stack-label">'+d.month+'</div><div class="stack-bar">'+(total?segs:'')+'</div></div>';
+    html+='<div class="stack-row"><div class="stack-label">'+esc(d.label)+'</div><div class="stack-bar">'+(total?segs:'')+'</div></div>';
   });
   return html;
 }
@@ -1344,7 +1361,7 @@ window.renderAnalyse=function(){
     '<div class="metric"><div class="ml">Rêves lucides</div><div class="mv">'+lucidPct+'%</div></div>'+
     '<div class="metric"><div class="ml">Émotion dominante</div><div class="mv">'+domHtml+'</div></div>'+
   '</div>';
-  html+=analyseCardHtml('evolution','Évolution des émotions',stackedEmotionsChart(emotionsByMonth(reves,granularity)),'<button type="button" class="info-btn" onclick="event.stopPropagation();openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>');
+  html+=analyseCardHtml('evolution','Évolution des émotions',stackedEmotionsChart(emotionsByMonth(reves,granularity,analysePeriod)),'<button type="button" class="info-btn" onclick="event.stopPropagation();openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>');
   html+=analyseCardHtml('repartition','Répartition des émotions',distHtml);
   html+=analyseCardHtml('motscles','Mots-clés les plus fréquents',wordCloudHtml(wordFrequency(reves)));
   html+=analyseCardHtml('personne','&#128100; Personnes les plus fréquentes',frequencyCardBody('personne',reves));
