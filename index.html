@@ -182,6 +182,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .fstate-opt.sel-brume{background:var(--sky);color:#1E3E5C}
 .fstate-opt.sel-eclairci{background:var(--amber);color:#6B4A12}
 .fstate-opt.sel-tous{background:var(--accent-lt);color:var(--accent-d)}
+.fstate-opt.sel-period{background:var(--accent-lt);color:var(--accent-d)}
 .dc-status-ico{display:inline-flex;flex-shrink:0;margin-top:3px}
 .dc-status-ico svg{width:20px;height:20px}
 .brume-counter:hover{opacity:0.85}
@@ -336,7 +337,10 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
 
     <!-- PAGE ANALYSE -->
     <div class="pg" id="pg-analyse">
-      <div class="ph"><div class="pt">Analyse</div></div>
+      <div class="ph">
+        <div class="pt">Analyse</div>
+        <div class="fstate-toggle" id="periodToggle"></div>
+      </div>
       <div id="analyseContent"></div>
     </div>
 
@@ -1099,9 +1103,10 @@ window.acceptSuggestion=function(i){
 var STOPWORDS=['le','la','les','un','une','des','de','du','et','ou','à','au','aux','en','dans','sur','pour','par','avec','sans','ce','cet','cette','ces','se','sa','son','ses','mon','ma','mes','ton','ta','tes','notre','nos','votre','vos','leur','leurs','je','tu','il','elle','on','nous','vous','ils','elles','me','te','lui','y','qui','que','quoi','dont','où','est','était','étaient','sont','été','être','avoir','ai','as','a','avons','avez','ont','avait','avaient','suis','es','sommes','êtes','pas','plus','très','comme','mais','donc','or','ni','car','si','alors','puis','ensuite','tout','tous','toute','toutes','autre','autres','même','aussi','déjà','encore','bien','peu','beaucoup','moi','toi','lui','eux','soi','cela','ça','ceci','celui','celle','ceux','celles','quand','comment','pourquoi','parce','entre','vers','chez','depuis','pendant','avant','après','sous','contre','soit','étais','était',
 'chose','choses','sorte','sortes','vraiment','assez','plutôt','genre','truc','trucs','tellement','dedans','dehors','ici','voilà','ainsi','cependant','toutefois','néanmoins','trop','quelque','quelques','rien','chacun','chacune','certains','certaines','plusieurs','jusqu','jusque','lorsque','tandis','malgré'];
 var WORD_CLOUD_MIN_DREAMS=2;
-function wordFrequency(){
+function wordFrequency(reves){
+  reves=reves||S.reves;
   var counts={};
-  S.reves.forEach(function(r){
+  reves.forEach(function(r){
     var txt=((r.titre||'')+' '+(r.texte||'')).toLowerCase();
     var words=txt.match(/[a-zàâäéèêëïîôöùûüÿçœæ]{3,}/g)||[];
     var seenInThisReve={};
@@ -1133,25 +1138,62 @@ function wordCloudHtml(words){
   }).join('');
   return '<div class="wordcloud">'+html+'</div>';
 }
-function tagFrequencyByType(type){
+function tagFrequencyByType(type,reves){
+  reves=reves||S.reves;
   var counts={};
-  S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)counts[t.value]=(counts[t.value]||0)+1;});});
+  reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)counts[t.value]=(counts[t.value]||0)+1;});});
   return Object.keys(counts).map(function(t){return {word:t,count:counts[t]};}).sort(function(a,b){return b.count-a.count||a.word.localeCompare(b.word,'fr');});
 }
-function emotionFrequency(){
+var analysePeriod=(function(){try{return localStorage.getItem('dc_analyse_period')||'tout';}catch(e){return 'tout';}})();
+window.setAnalysePeriod=function(v){
+  analysePeriod=v;
+  try{localStorage.setItem('dc_analyse_period',v);}catch(e){}
+  renderAnalyse();
+};
+function renderPeriodToggle(){
+  var wrap=ge('periodToggle');
+  var opts=[['semaine','Semaine'],['mois','Mois'],['annee','Année'],['tout','Tout']];
+  wrap.innerHTML=opts.map(function(o){
+    var cls='fstate-opt'+(analysePeriod===o[0]?' sel-period':'');
+    return '<div class="'+cls+'" onclick="setAnalysePeriod(\''+o[0]+'\')">'+o[1]+'</div>';
+  }).join('');
+}
+function revesInPeriod(){
+  if(analysePeriod==='tout')return S.reves;
+  var cutoff=new Date();
+  if(analysePeriod==='semaine')cutoff.setDate(cutoff.getDate()-7);
+  else if(analysePeriod==='mois')cutoff.setMonth(cutoff.getMonth()-1);
+  else if(analysePeriod==='annee')cutoff.setFullYear(cutoff.getFullYear()-1);
+  var cutoffStr=cutoff.getFullYear()+'-'+String(cutoff.getMonth()+1).padStart(2,'0')+'-'+String(cutoff.getDate()).padStart(2,'0');
+  return S.reves.filter(function(r){return r.date&&r.date>=cutoffStr;});
+}
+function granularityForPeriod(period){
+  if(period==='mois')return 'week';
+  if(period==='semaine')return 'day';
+  return 'month';
+}
+function weekStartKey(dateStr){
+  var d=new Date(dateStr+'T00:00:00');
+  var day=d.getDay();
+  var diff=(day===0?-6:1-day);
+  d.setDate(d.getDate()+diff);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function emotionFrequency(reves){
+  reves=reves||S.reves;
   var counts={};
   EMOTIONS.forEach(function(e){counts[e.key]=0;});
-  S.reves.forEach(function(r){(r.emotions||[]).forEach(function(k){if(counts[k]!==undefined)counts[k]++;});});
+  reves.forEach(function(r){(r.emotions||[]).forEach(function(k){if(counts[k]!==undefined)counts[k]++;});});
   return counts;
 }
-function dominantEmotion(){
-  var counts=emotionFrequency();
+function dominantEmotion(reves){
+  var counts=emotionFrequency(reves);
   var best=null;
   EMOTIONS.forEach(function(e){if(!best||counts[e.key]>counts[best.key])best=e;});
   return best&&counts[best.key]>0?best:null;
 }
-function spiderEmotionsChart(){
-  var counts=emotionFrequency();
+function spiderEmotionsChart(reves){
+  var counts=emotionFrequency(reves);
   var max=Math.max.apply(null,EMOTIONS.map(function(e){return counts[e.key];}));
   if(max===0)return '<div class="empty">Pas encore assez de données.</div>';
   var n=EMOTIONS.length;
@@ -1187,16 +1229,22 @@ function spiderEmotionsChart(){
   }).join('')+'</div>';
   return svg+legend;
 }
-function emotionsByMonth(){
-  var byMonth={};
-  S.reves.forEach(function(r){
+function emotionsByMonth(reves,granularity){
+  reves=reves||S.reves;
+  granularity=granularity||'month';
+  var byBucket={};
+  reves.forEach(function(r){
     if(!r.date)return;
-    var m=r.date.slice(0,7);
-    if(!byMonth[m]){byMonth[m]={};EMOTIONS.forEach(function(e){byMonth[m][e.key]=0;});}
-    (r.emotions||[]).forEach(function(k){if(byMonth[m][k]!==undefined)byMonth[m][k]++;});
+    var key;
+    if(granularity==='year')key=r.date.slice(0,4);
+    else if(granularity==='week')key=weekStartKey(r.date);
+    else if(granularity==='day')key=r.date;
+    else key=r.date.slice(0,7);
+    if(!byBucket[key]){byBucket[key]={};EMOTIONS.forEach(function(e){byBucket[key][e.key]=0;});}
+    (r.emotions||[]).forEach(function(k){if(byBucket[key][k]!==undefined)byBucket[key][k]++;});
   });
-  var months=Object.keys(byMonth).sort().reverse();
-  return months.map(function(m){return {month:m,counts:byMonth[m]};});
+  var keys=Object.keys(byBucket).sort().reverse();
+  return keys.map(function(k){return {month:k,counts:byBucket[k]};});
 }
 function barList(items,maxLabel){
   if(items.length===0)return '<div class="empty">Pas encore assez de données.</div>';
@@ -1258,8 +1306,8 @@ function applyAnalyseCollapseStates(){
     if(chevron)chevron.classList.toggle('open',open);
   });
 }
-function frequencyCardBody(type){
-  var all=tagFrequencyByType(type);
+function frequencyCardBody(type,reves){
+  var all=tagFrequencyByType(type,reves);
   var frequent=all.filter(function(t){return t.count>=TAG_TOP_MIN_OCCURRENCES;});
   var rest=all.filter(function(t){return t.count<TAG_TOP_MIN_OCCURRENCES;});
   var html='';
@@ -1282,23 +1330,26 @@ window.toggleFreqCollapse=function(type){
   if(chevron)chevron.classList.toggle('open',open);
 };
 window.renderAnalyse=function(){
-  var total=S.reves.length;
-  var lucidPct=total?Math.round(100*S.reves.filter(function(r){return r.lucide;}).length/total):0;
-  var dom=dominantEmotion();
+  renderPeriodToggle();
+  var reves=revesInPeriod();
+  var granularity=granularityForPeriod(analysePeriod);
+  var total=reves.length;
+  var lucidPct=total?Math.round(100*reves.filter(function(r){return r.lucide;}).length/total):0;
+  var dom=dominantEmotion(reves);
   var domHtml=dom?(dom.emoji+' '+esc(dom.label)):'—';
-  var distHtml=spiderEmotionsChart();
+  var distHtml=spiderEmotionsChart(reves);
   var html='';
   html+='<div class="mgrid3">'+
     '<div class="metric"><div class="ml">Rêves enregistrés</div><div class="mv">'+total+'</div></div>'+
     '<div class="metric"><div class="ml">Rêves lucides</div><div class="mv">'+lucidPct+'%</div></div>'+
     '<div class="metric"><div class="ml">Émotion dominante</div><div class="mv">'+domHtml+'</div></div>'+
   '</div>';
-  html+=analyseCardHtml('evolution','Évolution des émotions',stackedEmotionsChart(emotionsByMonth()),'<button type="button" class="info-btn" onclick="event.stopPropagation();openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>');
+  html+=analyseCardHtml('evolution','Évolution des émotions',stackedEmotionsChart(emotionsByMonth(reves,granularity)),'<button type="button" class="info-btn" onclick="event.stopPropagation();openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>');
   html+=analyseCardHtml('repartition','Répartition des émotions',distHtml);
-  html+=analyseCardHtml('motscles','Mots-clés les plus fréquents',wordCloudHtml(wordFrequency()));
-  html+=analyseCardHtml('personne','&#128100; Personnes les plus fréquentes',frequencyCardBody('personne'));
-  html+=analyseCardHtml('lieu','&#128205; Lieux les plus fréquents',frequencyCardBody('lieu'));
-  html+=analyseCardHtml('autre','&#127991; Autres tags les plus fréquents',frequencyCardBody('autre'));
+  html+=analyseCardHtml('motscles','Mots-clés les plus fréquents',wordCloudHtml(wordFrequency(reves)));
+  html+=analyseCardHtml('personne','&#128100; Personnes les plus fréquentes',frequencyCardBody('personne',reves));
+  html+=analyseCardHtml('lieu','&#128205; Lieux les plus fréquents',frequencyCardBody('lieu',reves));
+  html+=analyseCardHtml('autre','&#127991; Autres tags les plus fréquents',frequencyCardBody('autre',reves));
   ge('analyseContent').innerHTML=html;
   applyAnalyseCollapseStates();
 };
