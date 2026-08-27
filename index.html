@@ -403,8 +403,8 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
     <div class="field">
       <label class="fl">Statut</label>
       <div class="status-toggle">
-        <div class="status-opt" id="statusOptBrume" onclick="setBrumeStatus(true)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/></svg> Brume</div>
-        <div class="status-opt" id="statusOptEclairci" onclick="setBrumeStatus(false)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="10" r="8" fill="currentColor"/><line x1="4.5" y1="21" x2="19.5" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Éclairci</div>
+        <div class="status-opt" id="statusOptBrume" onclick="setBrumeStatus(true)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg> Brume</div>
+        <div class="status-opt" id="statusOptEclairci" onclick="setBrumeStatus(false)"><svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/></svg> Éclairci</div>
       </div>
       <div class="fh">Brume : brouillon rapide noté à la volée. Éclairci : rêve relu et complété.</div>
     </div>
@@ -448,8 +448,8 @@ var cfg={token:'',gistId:''};
 /* Paramètres de l'application : seuil et taille du "top" des tags (filtres + page Analyse) */
 var TAG_TOP_MIN_OCCURRENCES=2;
 var TAG_TOP_MAX_ITEMS=5;
-var BRUME_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/></svg>';
-var ECLAIRCI_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="10" r="8" fill="currentColor"/><line x1="4.5" y1="21" x2="19.5" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+var BRUME_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/><line x1="3" y1="17.5" x2="21" y2="17.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><line x1="6.5" y1="21.5" x2="17.5" y2="21.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+var ECLAIRCI_ICON_SVG='<svg class="brume-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 10.4A8 8 0 1 1 10.6 2 8 8 0 0 0 20 10.4z" fill="currentColor"/></svg>';
 var saveTimer=null;
 function ge(id){return document.getElementById(id);}
 
