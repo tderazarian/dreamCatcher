@@ -303,9 +303,7 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
           <button type="button" class="info-btn" onclick="openEmotionInfo()" aria-label="À propos des émotions">&#9432;</button>
         </div>
         <div class="filter-row frow-tight">
-          <select id="fltTagPersonne" onchange="renderJournal()"><option value="">&#128100; Toutes les personnes</option></select>
-          <select id="fltTagLieu" onchange="renderJournal()"><option value="">&#128205; Tous les lieux</option></select>
-          <select id="fltTagAutre" onchange="renderJournal()"><option value="">&#127991; Tous les autres tags</option></select>
+          <select id="fltTagAll" onchange="renderJournal()"><option value="">Tous les tags</option></select>
         </div>
       </div>
       <div id="journalList"></div>
@@ -836,26 +834,33 @@ function allTagsByType(type){
   S.reves.forEach(function(r){(r.tags||[]).forEach(function(t){if(t.type===type)s[t.value]=true;});});
   return Object.keys(s).sort(function(a,b){return a.localeCompare(b,'fr');});
 }
+function tagOptVal(type,value){return type+'::'+value;}
+function parseTagOptVal(v){
+  var i=v.indexOf('::');
+  return i===-1?{type:'',value:''}:{type:v.slice(0,i),value:v.slice(i+2)};
+}
 function populateTagFilter(){
-  [['fltTagPersonne','personne','&#128100; Toutes les personnes'],
-   ['fltTagLieu','lieu','&#128205; Tous les lieux'],
-   ['fltTagAutre','autre','&#127991; Tous les autres tags']].forEach(function(cfg){
-    var sel=ge(cfg[0]);
-    var cur=sel.value;
-    var top=tagFrequencyByType(cfg[1]).filter(function(t){return t.count>=TAG_TOP_MIN_OCCURRENCES;}).slice(0,TAG_TOP_MAX_ITEMS);
-    var all=allTagsByType(cfg[1]);
-    var html='<option value="">'+cfg[2]+'</option>';
+  var sel=ge('fltTagAll');
+  var cur=sel.value;
+  var groups=[['personne','&#128100; Personnes'],['lieu','&#128205; Lieux'],['autre','&#127991; Autres tags']];
+  var html='<option value="">Tous les tags</option>';
+  var allValues=[''];
+  groups.forEach(function(g){
+    var type=g[0],label=g[1];
+    var top=tagFrequencyByType(type).filter(function(t){return t.count>=TAG_TOP_MIN_OCCURRENCES;}).slice(0,TAG_TOP_MAX_ITEMS);
+    var all=allTagsByType(type);
+    if(all.length===0)return;
+    html+='<optgroup label="'+label+'">';
     if(top.length){
       html+='<option disabled>── Les plus utilisés ──</option>';
-      html+=top.map(function(t){return '<option value="'+esc(t.word)+'">'+esc(t.word)+'</option>';}).join('');
-    }
-    if(all.length){
+      html+=top.map(function(t){allValues.push(tagOptVal(type,t.word));return '<option value="'+tagOptVal(type,esc(t.word))+'">'+esc(t.word)+'</option>';}).join('');
       html+='<option disabled>──────────</option>';
-      html+=all.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
     }
-    sel.innerHTML=html;
-    sel.value=all.indexOf(cur)!==-1?cur:'';
+    html+=all.map(function(t){allValues.push(tagOptVal(type,t));return '<option value="'+tagOptVal(type,esc(t))+'">'+esc(t)+'</option>';}).join('');
+    html+='</optgroup>';
   });
+  sel.innerHTML=html;
+  sel.value=allValues.indexOf(cur)!==-1?cur:'';
 }
 var fltEmotions=[];
 window.toggleFilterEmotion=function(key){
@@ -902,9 +907,7 @@ window.renderJournal=function(){
   populateTagFilter();
   renderBrumeFilterToggle();
   var q=(ge('fltSearch').value||'').toLowerCase().trim();
-  var tagPersonne=ge('fltTagPersonne').value;
-  var tagLieu=ge('fltTagLieu').value;
-  var tagAutre=ge('fltTagAutre').value;
+  var tagFilter=parseTagOptVal(ge('fltTagAll').value);
   var brumeCount=S.reves.filter(function(r){return r.brume;}).length;
   var counterWrap=ge('brumeCounterWrap');
   if(brumeCount>0){
@@ -915,9 +918,7 @@ window.renderJournal=function(){
   var list=S.reves.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0);});
   list=list.filter(function(r){
     if(q&&!((r.titre||'').toLowerCase().indexOf(q)!==-1||(r.texte||'').toLowerCase().indexOf(q)!==-1))return false;
-    if(tagPersonne&&!(r.tags||[]).some(function(t){return t.type==='personne'&&t.value===tagPersonne;}))return false;
-    if(tagLieu&&!(r.tags||[]).some(function(t){return t.type==='lieu'&&t.value===tagLieu;}))return false;
-    if(tagAutre&&!(r.tags||[]).some(function(t){return t.type==='autre'&&t.value===tagAutre;}))return false;
+    if(tagFilter.type&&!(r.tags||[]).some(function(t){return t.type===tagFilter.type&&t.value===tagFilter.value;}))return false;
     if(fltEmotions.length&&!(r.emotions||[]).some(function(k){return fltEmotions.indexOf(k)!==-1;}))return false;
     if(brumeFilterValue==='brume'&&!r.brume)return false;
     if(brumeFilterValue==='complet'&&r.brume)return false;
